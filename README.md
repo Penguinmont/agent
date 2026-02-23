@@ -294,6 +294,114 @@ A standard academic robustness evaluation typically follows this protocol:
 
 ---
 
+## 10. Multi-Class Classification Under Adversarial Conditions
+
+The majority of adversarial robustness work surveyed in Section 9 includes substantial multi-class evaluation (website fingerprinting in closed-world is inherently multi-class, and many attack papers evaluate on multi-class application/service datasets). However, the user may wonder which papers go beyond binary anomaly/malware detection to tackle adversarial robustness for **multi-class** encrypted traffic classification tasks — e.g., distinguishing among many application types, service categories, or individual websites simultaneously under adversarial conditions. This section highlights those papers explicitly, together with additional multi-class-focused work not covered earlier.
+
+### 10.1 Which Existing Section-9 Papers Are Multi-Class?
+
+Most of the papers already listed in Section 9 evaluate multi-class scenarios. The table below clarifies the classification granularity for each.
+
+| Paper | Multi-Class Task | Number of Classes | Dataset(s) |
+|---|---|---|---|
+| **[B1] Sadeghzadeh et al. (IEEE TIFS 2021)** | Application-type classification | 12 classes (VPN + non-VPN app categories: chat, VoIP, streaming, file transfer, email, P2P, browsing) | ISCX-VPN-nonVPN 2016, USTC-TFC2016 (20 malware + benign classes) |
+| **[B2] Nasr et al. (USENIX Security 2021)** | Website fingerprinting (closed-world multi-class) | 95+ monitored websites | Custom Tor WF dataset |
+| **[B4] PANTS (USENIX Security 2025)** | Multi-class network traffic classification | Multiple app/service classes via nPrint | nPrint benchmarks (application identification, device fingerprinting) |
+| **[B5] TANTRA (IEEE TDSC 2022)** | Multi-class attack-type identification | 8 attack types + benign | CIC-IDS-2017, CSE-CIC-IDS-2018 |
+| **[B8] Chehade et al. (arXiv 2025)** | Multi-class application classification | Multiple classes (VPN app categories) | ISCX-VPN-nonVPN 2016 |
+| **[C1] CertTA (USENIX Security 2025)** | Website fingerprinting + app classification (multi-class) | 95–100 monitored websites; application categories | Tor WF datasets, encrypted app traffic |
+| **[D1] HyperVision (NDSS 2023)** | Multi-class malicious traffic type identification | 48+ attack types | 92 datasets (48 encrypted malicious traffic types) |
+| **[D2] ReTrial (IEEE TIFS 2025)** | Multi-class encrypted malware family classification | Multiple malware families + benign | USTC-TFC2016, CIC-DoHBrw-2020 |
+| **[E1] Deep Fingerprinting (CCS 2018)** | Multi-class website identification | 100 monitored websites (closed-world) | Custom Tor dataset |
+| **[E4] Tik-Tok (PETS 2020)** | Multi-class website identification | 100 monitored sites + 9,000 unmonitored | Custom Tor dataset |
+| **[E8] TrafficSliver (CCS 2020)** | Multi-class website identification | 100+ websites | Custom Tor dataset |
+| **[E11] Cherubin et al. (USENIX Security 2022)** | Multi-class website identification | 5–25+ monitored websites (scaling study) | Real-world Tor traffic (>60M flows) |
+
+### 10.2 Additional Multi-Class Adversarial Robustness Papers
+
+The following papers focus specifically on multi-class encrypted traffic classification under adversarial conditions and were not fully covered in Section 9. They are prioritized by venue impact.
+
+---
+
+**[M1]** Kai Wang, Zhiliang Wang, Dongqi Han, Wenqi Chen, Jiahai Yang, Xingang Shi, and Xia Yin.
+"BARS: Local Robustness Certification for Deep Learning based Traffic Analysis Systems."
+In *Proceedings of the 30th Network and Distributed System Security Symposium (NDSS 2023)*, San Diego, CA, USA, February 27–March 3, 2023.
+- **Venue:** NDSS (top-4 security conference).
+- **Multi-class task:** Evaluated on three practical DL-based traffic analysis systems performing multi-class classification (website fingerprinting with 100 classes, encrypted application identification).
+- **Contribution:** Introduced **Boundary-Adaptive Randomized Smoothing (BARS)** with a novel Distribution Transformer that optimizes smoothing noise converging on classification boundaries. Provides tighter local robustness certificates than generic smoothing. Demonstrated on five practical application cases with gradient-based noise optimization.
+- **Code:** github.com/KaiWangGitHub/BARS
+
+**[M2]** Xiyuan Zhao, Xinhao Deng, Qi Li, Yunpeng Liu, Zhuotao Liu, Kun Sun, and Ke Xu.
+"Towards Fine-Grained Webpage Fingerprinting at Scale."
+In *Proceedings of the 31st ACM Conference on Computer and Communications Security (CCS 2024)*, Salt Lake City, UT, USA, October 14–18, 2024. DOI: 10.1145/3658644.3690211.
+- **Venue:** ACM CCS (top-4 security conference).
+- **Multi-class task:** Fine-grained **webpage-level** identification (not just website-level) — 1,000 monitored webpages + 9,000+ unmonitored webpages from encrypted Tor traffic. Far exceeds the class count of typical WF studies.
+- **Contribution:** Proposed **Oscar**, a multi-label metric learning framework combining proxy-based and sample-based losses. Achieved **88.6% improvement in Recall@5** over state-of-the-art. Addresses the challenge of distinguishing subpages within the same website where traffic patterns are highly similar.
+
+**[M3]** Jiaxing Zhang, Xinhao Deng, Qi Li, and Ke Xu.
+"Transformer-based Model for Multi-tab Website Fingerprinting Attack."
+In *Proceedings of the 2023 ACM SIGSAC Conference on Computer and Communications Security (CCS 2023)*, Copenhagen, Denmark, November 26–30, 2023. DOI: 10.1145/3576915.3623107.
+- **Venue:** ACM CCS (top-4 security conference).
+- **Multi-class task:** Identifies **multiple websites** simultaneously from mixed multi-tab encrypted Tor traffic traces. Formulated as set prediction over N classes — a significantly harder multi-class problem than single-tab WF.
+- **Contribution:** Proposed **TMWF**, a Transformer-based model inspired by object detection that uses single-tab queries to extract features from multi-tab traces. Eliminates the unrealistic assumption that tab count is known. Includes a new open-world multi-tab dataset.
+- **Code:** github.com/jzx-bupt/TMWF
+
+**[M4]** Quanliang Jing, Xinxin Fan, Yanyan Liu, and Jingping Bi.
+"Adversarial Pre-Padding: Generating Evasive Network Traffic Against Transformer-Based Classifiers."
+*arXiv preprint*, arXiv:2510.25810, October 2025 (revised December 2025).
+- **Multi-class task:** Evaluated on three multi-class encrypted traffic datasets — **CSTNET-TLS 1.3** (120 application classes), **ISCX-VPN** (application and service categories, 12+ classes), and **ISCX-Tor** (8 classes) — targeting pre-trained transformer models.
+- **Contribution:** First adversarial attack specifically designed for **pre-trained transformer-based encrypted traffic classifiers** (ET-BERT, YaTC, NetMamba). Uses a **pre-padding strategy** (modifying bytes before the encrypted payload) combined with **reinforcement learning** (MDP formulation) to generate adversarial byte sequences. Reduced multi-class classification accuracy from **99% to as low as 25.68%** across all three datasets and three model architectures.
+
+**[M5]** Ahmed M. Elshewey and Ahmed M. Osman.
+"Enhancing Encrypted HTTPS Traffic Classification Based on Stacked Deep Ensembles Models."
+*Scientific Reports*, vol. 15, Article 35230, 2025. DOI: 10.1038/s41598-025-21261-6.
+- **Venue:** Scientific Reports (Nature Portfolio, IF ~4.6).
+- **Multi-class task:** 6-class HTTPS traffic type classification (Download, Live Video, Music, Player, Upload, Website) on 145,671 flows with 88 features.
+- **Contribution:** Stacked deep ensemble (DNN + CNN + RNN + LSTM + GRU with multinomial logistic regression meta-learner) achieving **99.49% accuracy, 0.9932 macro-F1, 0.9998 macro-AUC**. Outperformed individual models (best single: CNN at 99.34%). Demonstrated ensemble robustness advantage over single-model classifiers for multi-class encrypted traffic.
+
+**[M6]** Authors (Tsinghua University, Purdue University).
+"Trustworthy Deep Learning for Encrypted Traffic Classification."
+*Soft Computing*, February 2025. DOI: 10.1007/s00500-025-10462-w.
+- **Venue:** Soft Computing (Springer, IF ~4.1).
+- **Multi-class task:** Application and service classification on **ISCX VPN-nonVPN** (12 classes: VPN/non-VPN × 6 app types) and **USTC-TFC2016** (20 classes: 10 malware families + 10 benign apps).
+- **Contribution:** Introduced **ConfidNet** — a confidence-calibration network trained alongside the traffic classifier (ConvNet + ClassifyNet) to provide reliable confidence scores. Specifically designed to identify misclassified multi-class samples. Addresses the gap where high-accuracy classifiers give overconfident wrong predictions, which is critical when adversarial perturbations cause targeted misclassification.
+
+**[M7]** Thulfiqar Mahmood Tawfeeq and Mohsen Nickray.
+"Adversarial Training for Improved VPN Traffic Classification Using EfficientNet-B0 and Projected Gradient Descent."
+*International Journal of Intelligent Engineering and Systems*, vol. 18, no. 1, 2025. DOI: 10.22266/ijies2025.0229.87.
+- **Multi-class task:** VPN application-type classification on ISCX 2016 dataset (multiple VPN app categories: browsing, email, chat, streaming, file transfer, VoIP).
+- **Contribution:** Combined **EfficientNet-B0 + biLSTM** architecture with **PGD adversarial training**. Achieved **99.81% accuracy on clean traffic** and **99.35% on adversarial traffic**, demonstrating that adversarial training preserves multi-class accuracy while adding robustness against perturbations (packet delays, congestion, adversarial noise).
+
+**[M8]** MTDecipher Authors (various affiliations).
+"MTDecipher: Robust Encrypted Malicious Traffic Detection via Multi-Task Graph Neural Networks."
+*Cybersecurity* (Springer Nature), vol. 9, Article 112, January 2026. DOI: 10.1186/s42400-025-00522-x.
+- **Venue:** Cybersecurity (Springer Nature).
+- **Multi-class task:** Simultaneous **edge classification** (flow-level malicious/benign) and **node classification** (multi-class malware type/family identification) in a multi-task formulation.
+- **Contribution:** Bidirectional attentive sequence encoder (Bi-GRU + attention) with edge-block dual sampling for robust encrypted traffic detection. Multi-task GNN jointly optimizes edge and node losses to reduce structural bias. Outperforms eight existing methods on two real-world datasets with traffic obfuscation.
+
+**[M9]** Cuong Dao, Van Tong, Nam Thang Hoang, Hai Anh Tran, and Truong X. Tran.
+"Enhancing Encrypted Traffic Classification with Deep Adaptation Networks."
+In *Proceedings of the 48th IEEE Conference on Local Computer Networks (LCN 2023)*, Daytona Beach, FL, USA, October 2–5, 2023. DOI: 10.1109/LCN58197.2023.10223333.
+- **Venue:** IEEE LCN.
+- **Multi-class task:** Multi-class encrypted application traffic classification using domain adaptation for cross-network generalization.
+- **Contribution:** Deep Adaptation Network with Mean Embedding Test for multi-class encrypted traffic classification when training and deployment networks differ (domain shift). Addresses a robustness challenge where classifiers fail on traffic from new networks — relevant to adversarial robustness as domain shift and adversarial perturbation are closely related failure modes.
+
+### 10.3 Summary of Multi-Class Coverage
+
+The combined paper set (Sections 9 + 10) covers adversarial robustness across a wide range of multi-class encrypted traffic tasks:
+
+| Multi-Class Task | Class Count | Representative Papers |
+|---|---|---|
+| **Application identification** (e.g., YouTube, Skype, Netflix) | 6–120 classes | [B1], [B4], [M4], [M5], [M6], [M7], [M9] |
+| **Service-type classification** (chat, VoIP, streaming, browsing) | 6–12 classes | [B1], [B8], [M6], [M7] |
+| **Website fingerprinting** (closed-world) | 25–1,000+ sites | [B2], [C1], [E1], [E4], [E8], [E11], [M1], [M2] |
+| **Multi-tab website identification** | N websites from mixed traces | [M3] |
+| **Malware family classification** | 10–48 types | [B5], [D1], [D2], [M8] |
+| **Operating system / browser identification** | Multiple OS × browser | IEEE DataPort dataset |
+| **Certified robustness for multi-class traffic** | 100+ classes | [C1] CertTA, [M1] BARS |
+
+---
+
 ## Key References
 
 ### Encrypted Traffic Classification (Sections 1–8)
@@ -589,3 +697,25 @@ In *Proceedings of the 8th IEEE European Symposium on Security and Privacy (Euro
 "A Comprehensive Survey of Website Fingerprinting Attacks and Defenses in Tor: Advances and Open Challenges."
 *arXiv preprint*, arXiv:2510.11804, October 2025.
 - **Contribution:** Most recent comprehensive survey of WF attacks and defenses for encrypted Tor traffic. Covers datasets, attack models (k-NN, CNN, transformer-based), and defense mechanisms (adaptive padding, traffic morphing, adversarial perturbation, circuit splitting). Discusses multi-tab browsing and real-world deployment challenges.
+
+---
+
+#### I. Multi-Class Encrypted Traffic Classification Under Adversarial Conditions (Section 10)
+
+**[M1]** Kai Wang, Zhiliang Wang, Dongqi Han, Wenqi Chen, Jiahai Yang, Xingang Shi, and Xia Yin. "BARS: Local Robustness Certification for Deep Learning based Traffic Analysis Systems." NDSS 2023. [Full citation in Section 10.2]
+
+**[M2]** Xiyuan Zhao, Xinhao Deng, Qi Li, Yunpeng Liu, Zhuotao Liu, Kun Sun, and Ke Xu. "Towards Fine-Grained Webpage Fingerprinting at Scale." ACM CCS 2024. DOI: 10.1145/3658644.3690211. [Full citation in Section 10.2]
+
+**[M3]** Jiaxing Zhang, Xinhao Deng, Qi Li, and Ke Xu. "Transformer-based Model for Multi-tab Website Fingerprinting Attack." ACM CCS 2023. DOI: 10.1145/3576915.3623107. [Full citation in Section 10.2]
+
+**[M4]** Quanliang Jing, Xinxin Fan, Yanyan Liu, and Jingping Bi. "Adversarial Pre-Padding: Generating Evasive Network Traffic Against Transformer-Based Classifiers." arXiv:2510.25810, 2025. [Full citation in Section 10.2]
+
+**[M5]** Ahmed M. Elshewey and Ahmed M. Osman. "Enhancing Encrypted HTTPS Traffic Classification Based on Stacked Deep Ensembles Models." *Scientific Reports*, vol. 15, Article 35230, 2025. DOI: 10.1038/s41598-025-21261-6. [Full citation in Section 10.2]
+
+**[M6]** "Trustworthy Deep Learning for Encrypted Traffic Classification." *Soft Computing*, 2025. DOI: 10.1007/s00500-025-10462-w. [Full citation in Section 10.2]
+
+**[M7]** Thulfiqar Mahmood Tawfeeq and Mohsen Nickray. "Adversarial Training for Improved VPN Traffic Classification Using EfficientNet-B0 and Projected Gradient Descent." *IJIES*, vol. 18, no. 1, 2025. DOI: 10.22266/ijies2025.0229.87. [Full citation in Section 10.2]
+
+**[M8]** "MTDecipher: Robust Encrypted Malicious Traffic Detection via Multi-Task Graph Neural Networks." *Cybersecurity* (Springer Nature), vol. 9, Article 112, 2026. DOI: 10.1186/s42400-025-00522-x. [Full citation in Section 10.2]
+
+**[M9]** Cuong Dao, Van Tong, Nam Thang Hoang, Hai Anh Tran, and Truong X. Tran. "Enhancing Encrypted Traffic Classification with Deep Adaptation Networks." IEEE LCN 2023. DOI: 10.1109/LCN58197.2023.10223333. [Full citation in Section 10.2]

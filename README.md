@@ -402,6 +402,374 @@ The combined paper set (Sections 9 + 10) covers adversarial robustness across a 
 
 ---
 
+## 11. Literature Review: Multi-Class Encrypted Traffic Classification Under Adversarial Conditions
+
+This section provides a focused, structured analysis of papers that address **multi-class** classification of encrypted network traffic under adversarial conditions. For each paper, we examine: (1) the multi-class scenario, (2) the threat model and target classifier architecture, (3) the traffic features exploited, (4) the concrete steps for adversarial data generation, and (5) the optimization method employed.
+
+### 11.1 Sadeghzadeh et al. — AdvPad / AdvPay / AdvBurst (IEEE TIFS, 2021)
+
+**Citation:** Amir Mahdi Sadeghzadeh, Saeed Shiravi, and Rasool Jalili. "Adversarial Network Traffic: Towards Evaluating the Robustness of Deep-Learning-Based Network Traffic Classification." *IEEE TIFS*, vol. 16, pp. 3940–3955, 2021. DOI: 10.1109/TIFS.2021.3053093.
+
+**(1) Multi-class scenario.** The paper evaluates on three multi-class datasets: **ISCX-VPN-App** (application-level: browsing, email, chat, streaming, file transfer, VoIP — 12 classes combining VPN and non-VPN), **ISCX-VPN-Service** (service-level categories), and **USTC-TFC2016** (20 classes: 10 malware families + 10 benign applications). The classifiers are partitioned into three categories by input type: packet classifiers, flow content classifiers, and flow time-series classifiers — each evaluated on the multi-class tasks.
+
+**(2) Threat model & target architectures.**
+- **Threat model:** **White-box.** The attacker has full access to model weights and gradients.
+- **Target classifiers:**
+  - *Packet classifiers:* 1D-CNN operating on raw byte sequences of individual packets (inspired by Deep Packet).
+  - *Flow content classifiers:* 1D-CNN / 2D-CNN processing concatenated payload bytes of the first N packets in a flow.
+  - *Flow time-series classifiers:* 2D-CNN on FlowPic-style images (packet-size × time 2D histograms), and LSTM models on sequences of packet-size/inter-arrival-time feature vectors.
+
+**(3) Traffic features exploited for adversarial generation.**
+- **AdvPad:** Raw byte content of packet payloads (the padding region appended after the encrypted payload in each packet).
+- **AdvPay:** Payload bytes of injected dummy packets (entire new packets whose payloads carry the perturbation, added to the flow).
+- **AdvBurst:** Statistical features of flow bursts — packet sizes, inter-arrival times, and burst boundaries. Adversarial dummy packets are crafted to alter these statistical properties.
+
+**(4) Adversarial data generation steps.**
+1. Select target classifier category (packet / flow content / flow time-series) and corresponding input representation.
+2. Compute a **Universal Adversarial Perturbation (UAP)** — a single perturbation vector effective across all inputs — using an iterative algorithm adapted from DeepFool:
+   - For each training sample, compute the minimal perturbation that crosses the classifier's nearest decision boundary.
+   - Accumulate perturbations across samples and project back onto an Lp-norm ball.
+   - Iterate until a target fooling rate is reached on a validation set.
+3. Apply the UAP to traffic according to the attack variant:
+   - *AdvPad:* Append the UAP bytes into the padding field of each packet.
+   - *AdvPay:* Inject new dummy packets whose payloads contain the UAP.
+   - *AdvBurst:* Insert dummy packets at chosen burst positions so the resulting burst-level statistics match the perturbation target.
+4. Verify that modified traffic remains protocol-compliant (valid TLS records, correct TCP checksums).
+
+**(5) Optimization method.**
+- **UAP via iterative DeepFool projected onto an Lp-ball.** For each sample x_i: solve `argmin ||δ||_p s.t. f(x_i + δ) ≠ f(x_i)` using the signed gradient of the nearest decision hyperplane. The accumulated perturbation δ is projected onto `{δ : ||δ||_p ≤ ε}` after each update. The procedure is iterated over the dataset until the fooling rate (fraction of misclassified samples) exceeds a threshold. This is an **untargeted** attack — the goal is misclassification to any wrong class.
+
+---
+
+### 11.2 Nasr et al. — Blind Adversarial Perturbations (USENIX Security, 2021)
+
+**Citation:** Milad Nasr, Alireza Bahramali, and Amir Houmansadr. "Defeating DNN-Based Traffic Analysis Systems in Real-Time With Blind Adversarial Perturbations." *USENIX Security 2021*, pp. 2705–2722.
+
+**(1) Multi-class scenario.** Evaluated on **website fingerprinting (WF)** — a closed-world multi-class task where the classifier identifies which of **95 monitored websites** a Tor user is visiting. Also evaluated on **flow correlation** (binary, but the WF component is fully multi-class).
+
+**(2) Threat model & target architectures.**
+- **Threat model:** **White-box** for perturbation design (access to model gradients during the offline training phase), but the resulting perturbations are applied **blind** — they are independent of the specific target flow and can be deployed in real-time without re-optimization.
+- **Target classifiers:**
+  - **Deep Fingerprinting (DF):** A CNN architecture with convolutional, batch normalization, max-pooling, and fully connected layers — the state-of-the-art WF attack at time of publication.
+  - **DeepCorr:** A CNN for flow correlation.
+  - **Var-CNN:** A variant CNN architecture for WF.
+
+**(3) Traffic features exploited.**
+- **Packet direction sequences:** Ordered sequence of +1 (outgoing) and −1 (incoming) per packet.
+- **Packet sizes:** Byte length of each packet.
+- **Inter-packet timing (IAT):** Time intervals between consecutive packets.
+- **Burst-level features:** Aggregated statistics of consecutive same-direction packet groups.
+- Key insight: these features are *interdependent* — e.g., inserting a dummy packet changes not only the packet count but also all subsequent IATs and burst boundaries.
+
+**(4) Adversarial data generation steps.**
+1. **Offline perturbation design:** Using a training set, compute an **adversarial perturbation pattern** (a "patch" of dummy packets and timing delays) that is *universal* — effective across all input flows.
+2. **Remapping technique:** Because traffic features are mutually dependent, a perturbation in one feature (e.g., inserting a dummy packet) cascades to others (IAT changes, burst changes). The remapping function maps the desired feature-space perturbation back to realizable traffic-space operations: `traffic_ops = Remap(feature_perturbation)`, ensuring all dependent features remain consistent.
+3. **Real-time application:** The pre-computed perturbation pattern is applied to **live traffic** by injecting dummy packets and adding timing delays at predetermined positions — without buffering or inspecting the target flow content.
+4. The perturbation pattern consists of: (a) a sequence of dummy packet insertions at specified positions, (b) specified delays added to real packets.
+
+**(5) Optimization method.**
+- **Gradient-based optimization of an adversarial loss function** over the training set. The loss encourages the classifier's output distribution to be uniform (maximum confusion) when the perturbation is applied. Formally: `min_δ E_x[L_CE(f(x + Remap(δ)), y_uniform)]` where L_CE is cross-entropy loss, Remap enforces feature dependency constraints, and y_uniform is the uniform distribution over classes. Standard **Adam optimizer** with backpropagation through the classifier. After convergence, δ is fixed and deployed as a blind perturbation.
+
+---
+
+### 11.3 PANTS — Jin & Apostolaki (USENIX Security, 2025)
+
+**Citation:** Minhao Jin and Maria Apostolaki. "PANTS: Practical Adversarial Network Traffic Samples against ML-powered Networking Classifiers." *USENIX Security 2025*. ISBN: 978-1-939133-52-6.
+
+**(1) Multi-class scenario.** Evaluated on multi-class network traffic classification tasks using the **nPrint** benchmark suite, which includes: **application identification** (classifying encrypted flows into application categories), **device fingerprinting**, and **OS detection**. The exact number of classes varies per task (typically 5–20+ application classes).
+
+**(2) Threat model & target architectures.**
+- **Threat model:** **White-box.** The adversary has access to the classifier's architecture, weights, and training data. PANTS also evaluates transferability (cross-model, acting as a proxy for black-box settings).
+- **Target classifiers:**
+  - Multi-layer Perceptrons (MLPs) and Random Forests trained on nPrint features.
+  - The framework is architecture-agnostic — it works with any differentiable classifier plus a non-differentiable traffic-engineering pipeline.
+
+**(3) Traffic features exploited.**
+- **nPrint packet-level features:** A standardized, fixed-length binary/one-hot encoding of each packet's header fields — including all IP header fields (TTL, flags, protocol, etc.), TCP header fields (flags, window size, options), UDP fields, and selected payload bytes. Each packet is encoded into a fixed-width feature vector; a flow is represented as a sequence of such vectors.
+- The perturbation space is defined over modifiable header fields and packet-level operations (insertion, padding).
+
+**(4) Adversarial data generation steps.**
+1. **Formalize the adversarial search problem:** Given a target classifier f, an input flow x, and the traffic-engineering pipeline T (non-differentiable), find a perturbation δ such that: `f(T(x + δ)) ≠ f(T(x))` and `δ satisfies semantic constraints C`.
+2. **Decompose the pipeline:** Separate the differentiable component (the ML model f) from the non-differentiable component (traffic engineering T, e.g., packet reordering, fragmentation).
+3. **Gradient-based perturbation search:** For the differentiable part, compute gradients of the classification loss w.r.t. input features to identify promising perturbation directions using **PGD** (Projected Gradient Descent).
+4. **SMT constraint solving:** Encode the semantic constraints (valid IP headers, consistent TCP state, preserved application functionality) as **Satisfiability Modulo Theories (SMT)** formulas using the **Z3 solver**. The gradient-suggested perturbation is projected onto the feasible set defined by these constraints.
+5. **Iterative refinement:** Alternate between gradient steps and SMT projection until an adversarial example is found or a budget is exhausted.
+6. **Adversarial training loop (defense):** The generated adversarial examples are added to the training set, the classifier is retrained, and the process repeats for multiple rounds to robustify the model.
+
+**(5) Optimization method.**
+- **Hybrid: PGD + SMT projection.** Gradient-based search (PGD with cross-entropy loss) provides the optimization direction; the Z3 SMT solver enforces hard network-semantic constraints that cannot be captured by simple box constraints or Lp projections. This is the key innovation — it bridges the gap between continuous gradient optimization and discrete protocol-validity constraints that make naive FGSM/PGD inapplicable to network traffic. The adversarial training defense uses a standard **min-max robust optimization** formulation.
+
+---
+
+### 11.4 Adversarial Pre-Padding — Jing et al. (arXiv, 2025)
+
+**Citation:** Quanliang Jing, Xinxin Fan, Yanyan Liu, and Jingping Bi. "Adversarial Pre-Padding: Generating Evasive Network Traffic Against Transformer-Based Classifiers." arXiv:2510.25810, 2025.
+
+**(1) Multi-class scenario.** Evaluated on three multi-class encrypted traffic datasets:
+- **CSTNET-TLS 1.3:** ~120 application classes from the Chinese Science and Technology Network.
+- **ISCX-VPN:** 12+ classes (VPN application and service categories).
+- **ISCX-Tor:** 8 classes (Tor traffic types).
+This is the first adversarial attack study specifically targeting pre-trained transformer-based encrypted traffic classifiers on multi-class tasks.
+
+**(2) Threat model & target architectures.**
+- **Threat model:** Both **white-box** (full gradient access) and **black-box** (query-only access, using a reward signal).
+- **Target classifiers:**
+  - **ET-BERT:** Pre-trained BERT-style transformer operating on raw byte sequences (datagrams). Uses masked byte prediction pre-training on unlabeled traffic, then fine-tunes for multi-class classification.
+  - **YaTC:** Yet another Traffic Classifier — a transformer variant with byte-level tokenization.
+  - **NetMamba:** A state-space model (Mamba architecture) for traffic classification.
+  - Also evaluated on traditional models (1D-CNN, LSTM) for comparison.
+
+**(3) Traffic features exploited.**
+- **Raw byte sequences:** The first N bytes of each packet's payload (the input format for transformer-based classifiers). The pre-padding strategy specifically targets the **bytes before the encrypted payload** — protocol-header padding fields and optional TLS record-layer padding — which are mutable without breaking the encrypted content.
+- **Key constraint:** Encrypted payload bytes cannot be modified (they would fail integrity checks). Only bytes in header/padding positions are perturbable.
+
+**(4) Adversarial data generation steps.**
+1. **Identify mutable positions:** Parse each packet to locate bytes that can be modified without breaking TLS/TCP integrity — specifically, pre-payload padding fields, optional header extensions, and TLS record padding.
+2. **Formulate as MDP:** Model the byte-by-byte modification as a **Markov Decision Process**:
+   - *State:* Current traffic representation (modified byte sequence so far).
+   - *Action:* Choose a byte value (0–255) for the next mutable position.
+   - *Reward:* In the white-box setting, reward = decrease in the classifier's confidence for the true class. In the black-box setting, reward = 1 if the classifier's predicted label changes (misclassification), 0 otherwise.
+   - *Episode:* One complete pass through all mutable positions in a packet or flow.
+3. **Train RL agent:** Train a deep RL agent (policy network) to learn the optimal byte-value selection policy across the mutable positions.
+4. **Generate adversarial traffic:** Deploy the trained policy to produce adversarial byte sequences for new, unseen traffic flows. The modified bytes are inserted into the pre-padding positions of real packets.
+5. **Validate:** Ensure TLS handshake and TCP connection remain functional after modification.
+
+**(5) Optimization method.**
+- **Deep Reinforcement Learning.** The RL agent uses a policy-gradient method to maximize the expected cumulative reward (misclassification rate). For the white-box setting, the reward integrates the classifier's loss gradient to guide exploration. For the black-box setting, the agent learns purely from query feedback. This approach elegantly handles the **non-differentiable** nature of the byte-selection problem (discrete action space of 256 values per position) that gradient-based methods like FGSM/PGD cannot directly address.
+
+---
+
+### 11.5 TANTRA — Sharon et al. (IEEE TDSC, 2022)
+
+**Citation:** Yam Sharon, David Berend, Yang Liu, Asaf Shabtai, and Yuval Elovici. "TANTRA: Timing-Based Adversarial Network Traffic Reshaping Attack." *IEEE TDSC*, vol. 19, no. 6, pp. 3723–3738, 2022. DOI: 10.1109/TDSC.2022.3199100.
+
+**(1) Multi-class scenario.** Evaluated on **multi-class intrusion detection**: 8 attack types (Botnet, DDoS, DoS GoldenEye, DoS Hulk, DoS Slowhttptest, DoS Slowloris, FTP-Patator, SSH-Patator) plus benign traffic. The classifier must correctly assign each flow to one of these categories. Datasets: **CIC-IDS-2017** and **CSE-CIC-IDS-2018**.
+
+**(2) Threat model & target architectures.**
+- **Threat model:** **Black-box.** The attacker has no access to the NIDS model internals. The LSTM is trained independently on benign traffic from the target network — no knowledge of the classifier is needed.
+- **Target classifiers (NIDS being evaded):**
+  - **Kitsune:** An ensemble of autoencoders.
+  - **LUCID:** A CNN-based NIDS.
+  - **Custom DNN:** A fully connected deep neural network.
+  All three are multi-class classifiers distinguishing benign from multiple attack types.
+
+**(3) Traffic features exploited.**
+- **Inter-packet timing (IPT):** The sole feature manipulated. TANTRA does not modify packet content, sizes, directions, or counts — only the time intervals between consecutive packets.
+- The NIDS classifiers use flow-level statistical features derived from timing (mean IAT, std IAT, flow duration, etc.), packet sizes, byte counts, and flag counts. By reshaping timing alone, the attack indirectly alters multiple derived statistical features.
+
+**(4) Adversarial data generation steps.**
+1. **Collect benign traffic** from the target network.
+2. **Train an LSTM model** on benign inter-packet time differences: given the sequence of IPTs in a benign flow, the LSTM learns to predict the next IPT. This captures the temporal patterns characteristic of legitimate traffic.
+3. **At attack time:** For each malicious packet to be sent, query the LSTM with the sequence of IPTs so far. The LSTM predicts the IPT that would make this look like benign traffic.
+4. **Delay the packet** by the predicted amount: `actual_send_time = previous_packet_time + LSTM_predicted_IPT`. If the predicted IPT is shorter than the natural one, the packet is sent immediately (no artificial delay).
+5. **Result:** The malicious flow's timing profile statistically matches benign traffic, evading the NIDS without modifying any packet content.
+
+**(5) Optimization method.**
+- **Supervised LSTM training** on benign traffic sequences. The loss function is **Mean Squared Error (MSE)** between predicted and actual inter-packet times in the benign training set: `L = (1/N) Σ(IPT_predicted - IPT_actual)²`. Standard **Adam** optimizer with backpropagation through time (BPTT). This is not a traditional adversarial optimization (no adversarial loss against the NIDS) — instead, it is a **generative approach** that learns the benign timing distribution and replays it onto malicious traffic.
+
+---
+
+### 11.6 Chehade et al. — Input Structure and Adversarial Robustness (arXiv, 2025)
+
+**Citation:** Adel Chehade, Edoardo Ragusa, Paolo Gastaldo, and Rodolfo Zunino. "Adversarial Robustness of Traffic Classification under Resource Constraints: Input Structure Matters." arXiv:2512.02276, 2025.
+
+**(1) Multi-class scenario.** Evaluated on:
+- **ISCX-VPN-nonVPN:** Multi-class classification of VPN and non-VPN application types (browsing, email, chat, streaming, file transfer, VoIP — up to 12 classes).
+- **USTC-TFC2016:** 20-class classification (10 malware families + 10 benign applications).
+The study specifically compares how different input representations affect adversarial vulnerability in multi-class settings.
+
+**(2) Threat model & target architectures.**
+- **Threat model:** **White-box.** FGSM and PGD attacks with varying ε.
+- **Target classifiers:** Two **1D-CNN architectures** designed via **Hardware-aware Neural Architecture Search (HW-NAS)** — compact models (≤65K parameters, ≤2M FLOPs) suitable for edge deployment:
+  - *Flat-byte model:* Takes a flattened 1D vector of the first N raw bytes of a flow as input.
+  - *Time-series model:* Takes a 2D matrix where each row is a packet represented by [packet_size, IAT, direction, ...] features over time.
+  Both achieve >99% clean accuracy on USTC-TFC2016.
+
+**(3) Traffic features exploited.**
+- **Flat-byte input:** Raw byte values of the first N bytes of the flow. Perturbations are added directly to byte values within an Lp-ball.
+- **Time-series input:** Per-packet statistical features — packet size, inter-arrival time, direction, payload length — arranged as a time series. Perturbations modify these statistical values.
+- The key finding is that the **choice of input representation** dramatically changes the adversarial surface.
+
+**(4) Adversarial data generation steps.**
+1. Select the target classifier (flat-byte or time-series variant).
+2. **FGSM attack:** Compute `x_adv = x + ε · sign(∇_x L(f(x), y))` — a single-step perturbation along the loss gradient.
+3. **PGD attack:** Initialize `x_adv = x`, then iterate for T steps: `x_adv ← Π_{ε-ball}(x_adv + α · sign(∇_x L(f(x_adv), y)))`, where Π projects back onto the ε-ball and α is the step size.
+4. Evaluate accuracy on adversarial examples across multiple ε values (0.01, 0.05, 0.1, etc.).
+5. **Adversarial fine-tuning (defense):** Re-train the model on a mixture of clean and PGD-generated adversarial examples.
+
+**(5) Optimization method.**
+- Standard **FGSM** (single-step, L∞) and **PGD** (multi-step, L∞) with cross-entropy loss. No traffic-semantic constraints are enforced — this is a pure feature-space evaluation. The comparison between input structures reveals that **flat-byte models are inherently more robust** (>85% accuracy at ε=0.1) because perturbations distribute across a high-dimensional byte space, while **time-series models are fragile** (<35% at ε=0.1) because perturbations concentrate on a few highly informative statistical features.
+
+---
+
+### 11.7 BARS — Wang et al. (NDSS, 2023)
+
+**Citation:** Kai Wang, Zhiliang Wang, Dongqi Han, Wenqi Chen, Jiahai Yang, Xingang Shi, and Xia Yin. "BARS: Local Robustness Certification for Deep Learning based Traffic Analysis Systems." *NDSS 2023*.
+
+**(1) Multi-class scenario.** Evaluated on three practical DL-based traffic analysis systems performing multi-class classification:
+- **Website fingerprinting** with 100 monitored websites (100-class).
+- **Encrypted application identification.**
+- **Anomaly detection with fine-grained attack categorization.**
+
+**(2) Threat model & target architectures.**
+- **Threat model:** This is a **defense/certification** paper — it provides robustness guarantees regardless of the attacker's capabilities. The certificates are valid against any attacker (including worst-case white-box).
+- **Target classifiers (being certified):**
+  - **ACID:** Autoencoder-based classifier for anomaly detection.
+  - **CADE:** Contrastive autoencoder-based detector.
+  - **Kitsune:** Ensemble of autoencoders for NIDS.
+  The framework is architecture-agnostic.
+
+**(3) Traffic features.**
+- The framework operates on **any feature representation** used by the target classifier — packet-level features, flow statistics, byte sequences, etc. BARS handles the **heterogeneous feature space** challenge (mixed continuous, discrete, and categorical features) through its Distribution Transformer.
+
+**(4) Certification steps (not adversarial generation, but robustness measurement).**
+1. For a given input x and classifier f, define the perturbation set `B(x, r)` of all inputs within radius r.
+2. **Add smoothing noise:** Sample N noisy copies of x: `x_i = x + η_i` where η_i is drawn from an optimized noise distribution.
+3. **Classify all noisy copies** and compute the empirical class distribution.
+4. **Certify:** If the most-frequent class has a sufficiently large margin over the runner-up, the prediction is certifiably robust within radius r.
+5. **Optimize the noise distribution** using the Distribution Transformer: instead of fixed Gaussian noise, BARS learns noise shape and scale that converge on the classification boundary, maximizing the certified radius.
+
+**(5) Optimization method.**
+- **Boundary-Adaptive Randomized Smoothing.** The noise distribution parameters (shape, scale) are optimized via **gradient-based search** (gradient descent on the certification objective) using special distribution functions that enable differentiable optimization through the sampling process. This yields tighter robustness certificates than generic Gaussian smoothing — the noise is concentrated where it matters most (near decision boundaries) rather than uniformly distributed.
+
+---
+
+### 11.8 CertTA — Yan et al. (USENIX Security, 2025)
+
+**Citation:** Jinzhu Yan, Zhuotao Liu, Yuyang Xie, Shiyu Liang, Lin Liu, and Ke Xu. "CertTA: Certified Robustness Made Practical for Learning-Based Traffic Analysis." *USENIX Security 2025*.
+
+**(1) Multi-class scenario.** Evaluated on:
+- **Website fingerprinting:** 95–100 monitored websites (multi-class).
+- **Encrypted application traffic classification.**
+Evaluated across **six traffic analysis model architectures** and **two datasets**.
+
+**(2) Threat model & target architectures.**
+- **Threat model:** **Certification** — provides provable guarantees valid against **any** attacker, including worst-case white-box.
+- **Target classifiers (being certified):** Six diverse architectures including CNNs, LSTMs, and transformer-based models for traffic analysis. The framework is universally applicable.
+
+**(3) Traffic features and perturbation modalities.**
+CertTA is unique in handling **three simultaneous perturbation types** that map to realistic traffic manipulation:
+- **Additive continuous perturbations:** Packet length padding (adding bytes to packets) and timing delays (adding latency to packets). These modify continuous-valued features.
+- **Discrete perturbations:** Dummy packet insertion or deletion — changes the number of elements in the feature sequence.
+- **Multi-modal combination:** Simultaneous application of both additive and discrete perturbations.
+
+**(4) Certification steps.**
+1. Define the multi-modal perturbation set: `B(x) = {x' : x' can be obtained from x by padding ≤ Δ_p bytes, adding ≤ Δ_t delay, and inserting/deleting ≤ Δ_d dummy packets}`.
+2. **Multi-modal smoothing:** Inject noise into the input through a composite noise model: (a) Gaussian/Laplacian noise added to continuous features (packet sizes, timing), (b) random insertion/deletion noise applied to the packet sequence (for discrete perturbation certification).
+3. **Classify many noisy copies** and compute empirical class probabilities.
+4. **Derive the certified radius:** Using the smoothing theory, compute the maximum (Δ_p, Δ_t, Δ_d) within which the classifier's prediction is guaranteed to remain unchanged.
+5. Report the **certified accuracy** at various perturbation radii.
+
+**(5) Optimization method.**
+- **Multi-modal randomized smoothing** with tailored noise distributions for each perturbation type. The key innovation is the mathematical derivation of certification bounds that simultaneously account for continuous (Lp-norm) and discrete (edit-distance) perturbation spaces — prior work could only handle one type at a time. The noise parameters are set analytically based on the desired certification radius.
+
+---
+
+### 11.9 Oscar — Zhao et al. (ACM CCS, 2024)
+
+**Citation:** Xiyuan Zhao, Xinhao Deng, Qi Li, Yunpeng Liu, Zhuotao Liu, Kun Sun, and Ke Xu. "Towards Fine-Grained Webpage Fingerprinting at Scale." *ACM CCS 2024*. DOI: 10.1145/3658644.3690211.
+
+**(1) Multi-class scenario.** The most extreme multi-class WF study: **1,000 monitored webpages + 9,000+ unmonitored webpages** from encrypted Tor traffic. Unlike typical WF that identifies websites (domains), Oscar identifies individual webpages (URLs) — requiring discrimination among subpages with highly similar traffic patterns. This is formulated as **multi-label metric learning** rather than standard softmax classification.
+
+**(2) Threat model & target architectures.**
+- **Threat model:** Passive adversary observing encrypted Tor traffic at the entry guard (standard WF threat model). The adversary has a **trained classifier** on collected traffic samples — effectively a **white-box** setting for the classifier's use but no active perturbation of traffic.
+- **Architecture:** Oscar uses a **deep embedding network** (CNN backbone) that maps traffic traces into a metric embedding space. Classification is by nearest-neighbor lookup against class-representative embeddings. The training objective combines:
+  - *Proxy-based metric loss:* Maintains class-representative proxies in embedding space.
+  - *Sample-based metric loss:* Enforces same-class samples to be closer than different-class samples (triplet-style).
+
+**(3) Traffic features exploited.**
+- **Packet direction sequences:** +1/−1 encoding per packet.
+- **Packet sizes.**
+- **Timing information:** Inter-arrival times and burst durations.
+- Features are extracted from the first N packets of each Tor circuit.
+
+**(4) This is primarily an attack paper, not an adversarial-perturbation paper.** However, it is directly relevant because it establishes the multi-class attack benchmark that adversarial defenses must defeat. Oscar's 88.6% Recall@5 improvement quantifies how much harder it has become for defenses (padding, morphing, adversarial traces) to protect against fine-grained multi-class WF.
+
+**(5) Optimization method.**
+- **Combined metric learning loss:** `L = L_proxy + λ · L_sample`, where L_proxy is a proxy-NCA loss over class centroids and L_sample is a multi-similarity loss over training pairs. Optimized with **SGD + momentum**. The embedding dimension and loss weighting λ are tuned via cross-validation.
+
+---
+
+### 11.10 TMWF — Zhang et al. (ACM CCS, 2023)
+
+**Citation:** Jiaxing Zhang, Xinhao Deng, Qi Li, and Ke Xu. "Transformer-based Model for Multi-tab Website Fingerprinting Attack." *ACM CCS 2023*. DOI: 10.1145/3576915.3623107.
+
+**(1) Multi-class scenario.** **Multi-tab website fingerprinting** — the classifier must identify **multiple websites simultaneously** from a single mixed traffic trace produced by a user browsing multiple tabs concurrently over Tor. This is formulated as **set prediction** (predicting an unordered set of up to K website labels from one trace), making it a significantly harder multi-class problem than single-tab WF.
+
+**(2) Threat model & target architectures.**
+- **Threat model:** Passive adversary at the Tor entry guard (standard WF setting). The number of open tabs is **unknown** to the attacker (a realistic assumption that prior work did not make).
+- **Architecture:** **Encoder-decoder Transformer** inspired by DETR (object detection):
+  - *Encoder:* Processes the mixed traffic trace (packet direction + timing features) through self-attention layers to build a contextual representation.
+  - *Decoder:* Takes K learnable **query embeddings** (one per potential website) and attends to the encoder output. Each query independently predicts a website label (or "no website" if fewer than K tabs are open).
+  - *Prediction head:* Each decoder output is passed through a classification MLP.
+  - *Training loss:* Hungarian matching between predicted set and ground-truth set, then cross-entropy on matched pairs.
+
+**(3) Traffic features exploited.**
+- **Packet direction** (+1/−1 per packet).
+- **Packet timing** (absolute timestamps or inter-arrival times).
+- **Packet sizes** (though less informative for Tor due to cell-size rounding).
+Features are tokenized into a sequence fed to the Transformer encoder.
+
+**(4) This is an attack paper.** The adversarial robustness angle: TMWF establishes that multi-tab browsing **does not inherently defend** against WF (a common assumption), raising the bar for adversarial defense design.
+
+**(5) Optimization method.**
+- **Bipartite matching loss** (Hungarian algorithm) + **cross-entropy classification loss**, optimized with **AdamW** optimizer and learning rate scheduling. The set-prediction formulation avoids the need for combinatorial enumeration of tab assignments.
+
+---
+
+### 11.11 DeepRed — Hajizadeh et al. (USENIX WOOT, 2025)
+
+**Citation:** Mehrdad Hajizadeh et al. "DeepRed: A Deep Learning-Powered Command and Control Framework for Multi-Stage Red Teaming Against ML-based Network Intrusion Detection Systems." *USENIX WOOT 2025*, pp. 103–127.
+
+**(1) Multi-class scenario.** Evaluated against multi-class NIDS classifiers that distinguish benign traffic from multiple attack categories in **CIC-IDS-style datasets** (DDoS, brute-force, infiltration, botnet, web attacks, etc.). The C2 traffic must evade detection while maintaining its malicious functionality.
+
+**(2) Threat model & target architectures.**
+- **Threat model:** **Black-box** for the GAN-based evasion (no direct gradient access to the NIDS); the discriminator serves as a surrogate.
+- **Target classifiers (NIDS being evaded):**
+  - **FlowTransformer:** Transformer-based NIDS.
+  - **SSCL-IDS:** Self-supervised contrastive learning IDS.
+  - Additional ML-NIDS benchmarks.
+- **GAN architecture:**
+  - *Generator:* Takes real malicious traffic features as input and outputs perturbed features designed to be classified as benign.
+  - *Discriminator:* Distinguishes between real benign traffic and generator-produced perturbed malicious traffic.
+
+**(3) Traffic features exploited.**
+- **Packet-level features:** IP header fields, TCP flags, payload sizes, TTL.
+- **Flow-level features:** Duration, packet count, byte count, inter-arrival time statistics, flag distributions.
+- Two novel perturbation strategies constrain which features are modified:
+  - **SPSF (Single-Packet Single-Feature):** Perturbs only one feature in one packet — the most constrained.
+  - **SFP (Single-Feature Perturbation):** Perturbs one feature across multiple packets in a flow.
+
+**(4) Adversarial data generation steps.**
+1. **Collect real traffic:** Capture benign traffic from the target network and malicious C2 traffic from the red-team tool.
+2. **Train the GAN:** The generator learns to transform malicious flow features so they resemble benign flows. The discriminator provides gradient feedback.
+3. **Enforce TCP/IP constraints:** After each generator update, verify that perturbed features map to valid TCP/IP packets (correct checksums, valid flag combinations, feasible size/timing values). Invalid samples are rejected or clipped.
+4. **Select attack strategy:** Choose SPSF (minimal perturbation) or SFP (single-feature across packets) based on the desired stealth level.
+5. **Deploy:** The generator outputs perturbed C2 traffic in real time as part of a multi-stage red-team operation.
+
+**(5) Optimization method.**
+- **GAN adversarial training** with standard minimax objective: `min_G max_D [E_benign[log D(x)] + E_malicious[log(1 - D(G(x)))]]`. The generator and discriminator are alternately optimized with **Adam**. The TCP/IP constraint enforcement acts as a post-hoc projection step (not integrated into the gradient). The SPSF/SFP strategies further constrain the perturbation budget.
+
+---
+
+### 11.12 Comparative Summary Table
+
+| Paper | Venue | Multi-Class Task | Classes | Threat Model | Classifier Architecture | Features Exploited | Optimization Method |
+|---|---|---|---|---|---|---|---|
+| Sadeghzadeh et al. [B1] | IEEE TIFS 2021 | App/service/malware ID | 12–20 | White-box | 1D-CNN, 2D-CNN (FlowPic), LSTM | Raw bytes, payload, burst statistics | UAP via iterative DeepFool + Lp projection |
+| Nasr et al. [B2] | USENIX Security 2021 | Website fingerprinting | 95 | White-box (offline) → blind deployment | DF (CNN), Var-CNN, DeepCorr | Packet direction, size, IAT, bursts | Gradient-based (Adam) on adversarial loss + feature remapping |
+| PANTS [B4] | USENIX Security 2025 | App ID, device FP | 5–20+ | White-box | MLP, Random Forest (via nPrint) | nPrint packet headers (IP/TCP/UDP one-hot) | PGD + Z3 SMT solver (hybrid) |
+| Adv. Pre-Padding [M4] | arXiv 2025 | App classification | 8–120 | White-box & black-box | ET-BERT, YaTC, NetMamba, 1D-CNN | Raw byte sequences (pre-payload padding) | Deep RL (policy gradient, MDP) |
+| TANTRA [B5] | IEEE TDSC 2022 | Attack-type detection | 8+1 | Black-box | Kitsune, LUCID, custom DNN | Inter-packet timing only | Supervised LSTM (MSE on benign IPT) |
+| Chehade et al. [B8] | arXiv 2025 | App/malware ID | 12–20 | White-box | 1D-CNN (HW-NAS, flat & time-series) | Raw bytes or packet-stat time series | FGSM / PGD (L∞) + adversarial fine-tuning |
+| BARS [M1] | NDSS 2023 | WF + app ID | 100+ | Certification (any attacker) | ACID, CADE, Kitsune | Any (heterogeneous) | Boundary-adaptive randomized smoothing |
+| CertTA [C1] | USENIX Security 2025 | WF + app classification | 95–100 | Certification (any attacker) | 6 architectures (CNN, LSTM, Transformer) | Packet size, timing, packet count | Multi-modal randomized smoothing |
+| Oscar [M2] | ACM CCS 2024 | Fine-grained webpage FP | 1,000+ | Trained classifier (passive) | CNN + metric learning embedding | Direction, size, timing | Proxy-NCA + multi-similarity loss (SGD) |
+| TMWF [M3] | ACM CCS 2023 | Multi-tab WF | N×100 sites | Trained classifier (passive) | Encoder-decoder Transformer | Direction, timing, size | Hungarian matching + cross-entropy (AdamW) |
+| DeepRed [B6] | USENIX WOOT 2025 | Multi-class NIDS evasion | 5–15 | Black-box (GAN surrogate) | FlowTransformer, SSCL-IDS | Packet headers, flow statistics | GAN minimax (Adam) + TCP/IP projection |
+
+---
+
 ## Key References
 
 ### Encrypted Traffic Classification (Sections 1–8)

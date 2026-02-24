@@ -373,10 +373,11 @@ In *Proceedings of the 2023 ACM SIGSAC Conference on Computer and Communications
 - **Multi-class task:** VPN application-type classification on ISCX 2016 dataset (multiple VPN app categories: browsing, email, chat, streaming, file transfer, VoIP).
 - **Contribution:** Combined **EfficientNet-B0 + biLSTM** architecture with **PGD adversarial training**. Achieved **99.81% accuracy on clean traffic** and **99.35% on adversarial traffic**, demonstrating that adversarial training preserves multi-class accuracy while adding robustness against perturbations (packet delays, congestion, adversarial noise).
 
-**[M8]** MTDecipher Authors (various affiliations).
+**[M8]** Fan Li, Xi Luo, Weihong Han, Binxing Fang, and Lihua Yin.
 "MTDecipher: Robust Encrypted Malicious Traffic Detection via Multi-Task Graph Neural Networks."
 *Cybersecurity* (Springer Nature), vol. 9, Article 112, January 2026. DOI: 10.1186/s42400-025-00522-x.
 - **Venue:** Cybersecurity (Springer Nature).
+- **Affiliations:** Harbin Institute of Technology (Shenzhen), Peng Cheng Laboratory, and Guangzhou University.
 - **Multi-class task:** Simultaneous **edge classification** (flow-level malicious/benign) and **node classification** (multi-class malware type/family identification) in a multi-task formulation.
 - **Contribution:** Bidirectional attentive sequence encoder (Bi-GRU + attention) with edge-block dual sampling for robust encrypted traffic detection. Multi-task GNN jointly optimizes edge and node losses to reduce structural bias. Outperforms eight existing methods on two real-world datasets with traffic obfuscation.
 
@@ -908,16 +909,18 @@ In *Proceedings of the 30th Network and Distributed System Security Symposium (N
 - **Venue:** NDSS (top-4 security conference) + IEEE/ACM ToN (top networking journal).
 - **Contribution:** Proposed **HyperVision**, an unsupervised system that detects unknown encrypted malicious traffic by analyzing flow interaction graphs. Captures graph structural features (connectivity, sparsity) without requiring labeled datasets. Achieved **≥0.92 AUC**, **≥0.86 F1**, **80.6 Gb/s throughput**, and **0.83s average latency** on 92 datasets including 48 encrypted malicious traffic attacks.
 
-**[D2]** ReTrial Authors (Beijing Institute of Technology, Beijing University of Posts and Telecommunications, Purdue University), including Bharat K. Bhargava.
+**[D2]** Jianjin Zhao, Qi Li, Zewei Han, Junsong Fu, Guoshun Nan, Meng Shen, and Bharat K. Bhargava.
 "ReTrial: Robust Encrypted Malicious Traffic Detection via Discriminative Relation Incorporation and Misleading Relation Correction."
 *IEEE Transactions on Information Forensics and Security (TIFS)*, vol. 20, pp. 677–692, 2025. DOI: 10.1109/TIFS.2024.3515821. IEEE Xplore: 10792981.
 - **Venue:** IEEE TIFS (top-tier security journal, IF ~6.8).
+- **Affiliations:** Beijing University of Posts and Telecommunications, Beijing Institute of Technology (School of Cyberspace Science and Technology), and Purdue University.
 - **Contribution:** Constructs a relational multigraph of encrypted flows and uses a **Graph Attention Network (GAT)** to selectively incorporate contextual information while correcting misleading relations via multi-order neighborhood similarity graphs. Demonstrated robustness under adversarial conditions: **maximum 5.88% F1 reduction** under random packet dropping and greedy perturbation edge injection, compared to significantly greater degradation in competing methods.
 
-**[D3]** TrafCL Authors (Beijing Institute of Technology, Purdue University).
+**[D3]** Xiaodu Yang, Sijie Ruan, Jinyu Li, Yinliang Yue, and Bo Sun.
 "TrafCL: Robust Encrypted Malicious Traffic Detection via Contrastive Learning."
 In *Proceedings of the 33rd ACM International Conference on Information and Knowledge Management (CIKM 2024)*, Boise, ID, USA, October 21–25, 2024, pp. 2910–2919. DOI: 10.1145/3627673.3679839.
 - **Venue:** ACM CIKM (top-tier data management conference).
+- **Affiliations:** CAS Institute of Information Engineering, Beijing Institute of Technology, Zhongguancun Laboratory, and National Computer Network Emergency Response Technical Team (CNCERT).
 - **Contribution:** Contrastive learning framework with Session Augmentation, Triple-aspect Session Feature Extraction, and Co-attention Session Encoder for detecting encrypted malware C2 traffic. Pre-trained on unlabeled data and fine-tuned on labeled data. Achieved **11.35% and 6.71% F1 improvements** over baselines on two encrypted traffic datasets.
 
 ---
@@ -983,7 +986,7 @@ In *Proceedings of the 27th ACM Conference on Computer and Communications Securi
 
 **[E10]** James K. Holland and Nicholas Hopper.
 "RegulaTor: A Straightforward Website Fingerprinting Defense."
-*Proceedings on Privacy Enhancing Technologies (PoPETs)*, vol. 2022, pp. 344–362. DOI: 10.2478/popets-2022-0049.
+*Proceedings on Privacy Enhancing Technologies (PoPETs)*, vol. 2022, issue 2, pp. 344–362. DOI: 10.2478/popets-2022-0049.
 - **Venue:** PoPETs/PETS (top privacy conference).
 - **Contribution:** Exploits common patterns in web browsing to create a lightweight defense. Reduces Tik-Tok attack accuracy from **66% to 25.4%** (closed-world) and F-score to **0.135** (open-world) with only **6.6% latency overhead** and **39.3% less bandwidth overhead** than comparable defenses.
 
@@ -1005,7 +1008,7 @@ In *Proceedings of the 33rd USENIX Security Symposium (USENIX Security 2024)*, P
 
 **[F2]** Diwen Xue, Robert Stanley, Piyush Kumar, and Roya Ensafi.
 "The Discriminative Power of Cross-layer RTTs in Fingerprinting Proxy Traffic."
-In *Proceedings of the 32nd Network and Distributed System Security Symposium (NDSS 2025)*, San Diego, CA, USA, February 23–28, 2025.
+In *Proceedings of the 32nd Network and Distributed System Security Symposium (NDSS 2025)*, San Diego, CA, USA, February 24–28, 2025.
 - **Venue:** NDSS (top-4 security conference).
 - **Contribution:** Exploited **RTT discrepancies** between transport and application layers caused by proxy routing to fingerprint encrypted circumvention traffic. Protocol-agnostic — targets multiple proxy protocols simultaneously. Evaluated on both testbed and real ISP traffic.
 
@@ -1025,9 +1028,9 @@ In *Proceedings of the 16th Network and Distributed System Security Symposium (N
 
 #### G. Robustness of Encrypted Traffic Evaluation Methodology
 
-**[G1]** Zhao, Dettori, Boffa, Vassio, and Mellia.
+**[G1]** Yuqi Zhao, Giovanni Dettori, Matteo Boffa, Luca Vassio, and Marco Mellia.
 "The Sweet Danger of Sugar: Debunking Representation Learning for Encrypted Traffic Classification."
-In *Proceedings of ACM SIGCOMM 2025*.
+In *Proceedings of ACM SIGCOMM 2025*, Coimbra, Portugal, September 8–11, 2025.
 - **Venue:** ACM SIGCOMM (top networking conference).
 - **Contribution:** Critically examined representation learning models (BERT-inspired) for encrypted traffic classification. Revealed that reported high performance (up to 98%) is driven by **data preparation artifacts and spurious correlations** (shortcuts) that do not generalize to realistic deployments. Proposed corrected evaluation methodology.
 
@@ -1093,6 +1096,6 @@ In *Proceedings of the 8th IEEE European Symposium on Security and Privacy (Euro
 
 **[M7]** Thulfiqar Mahmood Tawfeeq and Mohsen Nickray. "Adversarial Training for Improved VPN Traffic Classification Using EfficientNet-B0 and Projected Gradient Descent." *IJIES*, vol. 18, no. 1, 2025. DOI: 10.22266/ijies2025.0229.87. [Full citation in Section 10.2]
 
-**[M8]** "MTDecipher: Robust Encrypted Malicious Traffic Detection via Multi-Task Graph Neural Networks." *Cybersecurity* (Springer Nature), vol. 9, Article 112, 2026. DOI: 10.1186/s42400-025-00522-x. [Full citation in Section 10.2]
+**[M8]** Fan Li, Xi Luo, Weihong Han, Binxing Fang, and Lihua Yin. "MTDecipher: Robust Encrypted Malicious Traffic Detection via Multi-Task Graph Neural Networks." *Cybersecurity* (Springer Nature), vol. 9, Article 112, 2026. DOI: 10.1186/s42400-025-00522-x. [Full citation in Section 10.2]
 
 **[M9]** Cuong Dao, Van Tong, Nam Thang Hoang, Hai Anh Tran, and Truong X. Tran. "Enhancing Encrypted Traffic Classification with Deep Adaptation Networks." IEEE LCN 2023. DOI: 10.1109/LCN58197.2023.10223333. [Full citation in Section 10.2]

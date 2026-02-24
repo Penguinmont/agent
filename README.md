@@ -306,7 +306,7 @@ Most of the papers already listed in Section 9 evaluate multi-class scenarios. T
 |---|---|---|---|
 | **[B1] Sadeghzadeh et al. (IEEE TIFS 2021)** | Application-type classification | 12 classes (VPN + non-VPN app categories: chat, VoIP, streaming, file transfer, email, P2P, browsing) | ISCX-VPN-nonVPN 2016, USTC-TFC2016 (20 malware + benign classes) |
 | **[B2] Nasr et al. (USENIX Security 2021)** | Website fingerprinting (closed-world multi-class) | 95+ monitored websites | Custom Tor WF dataset |
-| **[B4] PANTS (USENIX Security 2025)** | Multi-class network traffic classification | Multiple app/service classes via nPrint | nPrint benchmarks (application identification, device fingerprinting) |
+| **[B4] PANTS (USENIX Security 2025)** | App identification + VPN detection + QoE inference | 18 app classes; 11 resolution classes; binary VPN | UTMobileNetTraffic2021, VCAML, ISCXVPN2016 |
 | **[B5] TANTRA (IEEE TDSC 2022)** | Multi-class attack-type identification | 8 attack types + benign | CIC-IDS-2017, CSE-CIC-IDS-2018 |
 | **[B8] Chehade et al. (arXiv 2025)** | Multi-class application classification | Multiple classes (VPN app categories) | ISCX-VPN-nonVPN 2016 |
 | **[C1] CertTA (USENIX Security 2025)** | Website fingerprinting + app classification (multi-class) | 95–100 monitored websites; application categories | Tor WF datasets, encrypted app traffic |
@@ -359,10 +359,11 @@ In *Proceedings of the 2023 ACM SIGSAC Conference on Computer and Communications
 - **Multi-class task:** 6-class HTTPS traffic type classification (Download, Live Video, Music, Player, Upload, Website) on 145,671 flows with 88 features.
 - **Contribution:** Stacked deep ensemble (DNN + CNN + RNN + LSTM + GRU with multinomial logistic regression meta-learner) achieving **99.49% accuracy, 0.9932 macro-F1, 0.9998 macro-AUC**. Outperformed individual models (best single: CNN at 99.34%). Demonstrated ensemble robustness advantage over single-model classifiers for multi-class encrypted traffic.
 
-**[M6]** Authors (Tsinghua University, Purdue University).
+**[M6]** Zheng Li, Yanbei Liu, Changqing Zhang, Wanjin Shan, Haifeng Zhang, and Xiaoming Zhu.
 "Trustworthy Deep Learning for Encrypted Traffic Classification."
-*Soft Computing*, February 2025. DOI: 10.1007/s00500-025-10462-w.
-- **Venue:** Soft Computing (Springer, IF ~4.1).
+*Soft Computing*, vol. 29, no. 2, pp. 645–662, February 2025. DOI: 10.1007/s00500-025-10462-w.
+- **Venue:** Soft Computing (Springer).
+- **Affiliations:** Tiangong University (Tianjin), Tianjin University, and the 54th Research Institute of CETC (Shijiazhuang).
 - **Multi-class task:** Application and service classification on **ISCX VPN-nonVPN** (12 classes: VPN/non-VPN × 6 app types) and **USTC-TFC2016** (20 classes: 10 malware families + 10 benign apps).
 - **Contribution:** Introduced **ConfidNet** — a confidence-calibration network trained alongside the traffic classifier (ConvNet + ClassifyNet) to provide reliable confidence scores. Specifically designed to identify misclassified multi-class samples. Addresses the gap where high-accuracy classifiers give overconfident wrong predictions, which is critical when adversarial perturbations cause targeted misclassification.
 
@@ -477,17 +478,24 @@ This section provides a focused, structured analysis of papers that address **mu
 
 **Citation:** Minhao Jin and Maria Apostolaki. "PANTS: Practical Adversarial Network Traffic Samples against ML-powered Networking Classifiers." *USENIX Security 2025*. ISBN: 978-1-939133-52-6.
 
-**(1) Multi-class scenario.** Evaluated on multi-class network traffic classification tasks using the **nPrint** benchmark suite, which includes: **application identification** (classifying encrypted flows into application categories), **device fingerprinting**, and **OS detection**. The exact number of classes varies per task (typically 5–20+ application classes).
+**(1) Multi-class scenario.** Evaluated on three distinct traffic classification tasks:
+- **VPN detection** (binary: VPN vs. non-VPN) using **ISCXVPN2016** — 8,577 bi-directional flows.
+- **APP (Application identification)** — **18 mobile application classes** (e.g., Dropbox, Google Drive, Facebook) using **UTMobileNetTraffic2021** — 7,134 bi-directional flows.
+- **QoE (Quality of Experience inference)** — **11 video resolution classes** (e.g., 720p, 360p) from video conferencing apps (Google Meet, Microsoft Teams, Cisco Webex) using **VCAML** — 37,274 samples.
+The APP and QoE tasks are multi-class. PANTS does **not** use the nPrint benchmark suite.
 
 **(2) Threat model & target architectures.**
-- **Threat model:** **White-box.** The adversary has access to the classifier's architecture, weights, and training data. PANTS also evaluates transferability (cross-model, acting as a proxy for black-box settings).
-- **Target classifiers:**
-  - Multi-layer Perceptrons (MLPs) and Random Forests trained on nPrint features.
+- **Threat model:** **White-box.** The adversary has access to the classifier's architecture, weights, and training data. PANTS evaluates two attacker positions: **end-host** (can delay packets, inject packets, append dummy payload) and **in-path** (can only delay packets of one direction).
+- **Target classifiers:** For each application, four classifiers are independently trained:
+  - **Multilayer Perceptron (MLP)**
+  - **Random Forest (RF)**
+  - **Transformer (TF)**
+  - **Convolutional Neural Network (CNN)**
   - The framework is architecture-agnostic — it works with any differentiable classifier plus a non-differentiable traffic-engineering pipeline.
 
 **(3) Traffic features exploited.**
-- **nPrint packet-level features:** A standardized, fixed-length binary/one-hot encoding of each packet's header fields — including all IP header fields (TTL, flags, protocol, etc.), TCP header fields (flags, window size, options), UDP fields, and selected payload bytes. Each packet is encoded into a fixed-width feature vector; a flow is represented as a sequence of such vectors.
-- The perturbation space is defined over modifiable header fields and packet-level operations (insertion, padding).
+- **Flow-level statistical features** extracted by a feature engineering module specific to each application (detailed in the paper's Appendix B). Key features include **packet sizes**, **inter-arrival times**, **flow duration**, and **byte counts** — not raw packet header fields or nPrint representations.
+- The perturbation space is defined over realizable traffic operations: **packet delay** (up to 20% of flow duration), **dummy packet injection** (up to 20 packets), and **dummy payload appending** (to up to 20% of packets).
 
 **(4) Adversarial data generation steps.**
 1. **Formalize the adversarial search problem:** Given a target classifier f, an input flow x, and the traffic-engineering pipeline T (non-differentiable), find a perturbation δ such that: `f(T(x + δ)) ≠ f(T(x))` and `δ satisfies semantic constraints C`.
@@ -759,7 +767,7 @@ Features are tokenized into a sequence fed to the Transformer encoder.
 |---|---|---|---|---|---|---|---|
 | Sadeghzadeh et al. [B1] | IEEE TIFS 2021 | App/service/malware ID | 12–20 | White-box | 1D-CNN, 2D-CNN (FlowPic), LSTM | Raw bytes, payload, burst statistics | UAP via iterative DeepFool + Lp projection |
 | Nasr et al. [B2] | USENIX Security 2021 | Website fingerprinting | 95 | White-box (offline) → blind deployment | DF (CNN), Var-CNN, DeepCorr | Packet direction, size, IAT, bursts | Gradient-based (Adam) on adversarial loss + feature remapping |
-| PANTS [B4] | USENIX Security 2025 | App ID, device FP | 5–20+ | White-box | MLP, Random Forest (via nPrint) | nPrint packet headers (IP/TCP/UDP one-hot) | PGD + Z3 SMT solver (hybrid) |
+| PANTS [B4] | USENIX Security 2025 | App ID, VPN, QoE | 2–18 | White-box | MLP, RF, Transformer, CNN | Flow statistics (pkt size, IAT, duration) | PGD + Z3 SMT solver (hybrid) |
 | Adv. Pre-Padding [M4] | arXiv 2025 | App classification | 8–120 | White-box & black-box | ET-BERT, YaTC, NetMamba, 1D-CNN | Raw byte sequences (pre-payload padding) | Deep RL (policy gradient, MDP) |
 | TANTRA [B5] | IEEE TDSC 2022 | Attack-type detection | 8+1 | Black-box | Kitsune, LUCID, custom DNN | Inter-packet timing only | Supervised LSTM (MSE on benign IPT) |
 | Chehade et al. [B8] | arXiv 2025 | App/malware ID | 12–20 | White-box | 1D-CNN (HW-NAS, flat & time-series) | Raw bytes or packet-stat time series | FGSM / PGD (L∞) + adversarial fine-tuning |
@@ -1081,7 +1089,7 @@ In *Proceedings of the 8th IEEE European Symposium on Security and Privacy (Euro
 
 **[M5]** Ahmed M. Elshewey and Ahmed M. Osman. "Enhancing Encrypted HTTPS Traffic Classification Based on Stacked Deep Ensembles Models." *Scientific Reports*, vol. 15, Article 35230, 2025. DOI: 10.1038/s41598-025-21261-6. [Full citation in Section 10.2]
 
-**[M6]** "Trustworthy Deep Learning for Encrypted Traffic Classification." *Soft Computing*, 2025. DOI: 10.1007/s00500-025-10462-w. [Full citation in Section 10.2]
+**[M6]** Zheng Li, Yanbei Liu, Changqing Zhang, Wanjin Shan, Haifeng Zhang, and Xiaoming Zhu. "Trustworthy Deep Learning for Encrypted Traffic Classification." *Soft Computing*, vol. 29, no. 2, pp. 645–662, 2025. DOI: 10.1007/s00500-025-10462-w. [Full citation in Section 10.2]
 
 **[M7]** Thulfiqar Mahmood Tawfeeq and Mohsen Nickray. "Adversarial Training for Improved VPN Traffic Classification Using EfficientNet-B0 and Projected Gradient Descent." *IJIES*, vol. 18, no. 1, 2025. DOI: 10.22266/ijies2025.0229.87. [Full citation in Section 10.2]
 

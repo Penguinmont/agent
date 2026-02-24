@@ -202,9 +202,9 @@ These three variants collectively test robustness across different feature abstr
 
 #### 9.2.3 Practical Constraint-Aware Attacks
 
-- **PANTS (Practical Adversarial Network Traffic Samples, 2024):** A white-box framework that combines adversarial ML with **Satisfiability Modulo Theories (SMT) solvers** to generate adversarial traffic samples that satisfy all network-semantic constraints (valid headers, correct protocol state, functional application behavior). PANTS achieves a **70% higher median success rate** than prior baselines (Amoeba, BAP) in finding adversarial inputs. It addresses non-differentiable components in traffic processing pipelines that prevent naive gradient-based attacks.
-- **Amoeba:** Evolutionary/search-based approach that mutates traffic features within feasible bounds to find misclassified samples without requiring gradients.
-- **BAP (Blind Adversarial Perturbation):** Black-box attack that iteratively perturbs traffic features using only classifier output labels.
+- **PANTS (Practical Adversarial Network Traffic Samples, 2025):** A white-box framework that combines adversarial ML with **Satisfiability Modulo Theories (SMT) solvers** to generate adversarial traffic samples that satisfy all network-semantic constraints (valid headers, correct protocol state, functional application behavior). PANTS achieves a **70% higher median success rate** than prior baselines (Amoeba, BAP) in finding adversarial inputs. It addresses non-differentiable components in traffic processing pipelines that prevent naive gradient-based attacks.
+- **Amoeba (CoNEXT 2023):** A reinforcement-learning-based approach that learns to craft adversarial packet sequences against ML-based censorship classifiers through a black-box trial-and-error process, achieving 94% average attack success rate with transferability to unseen models.
+- **BAP (Blind Adversarial Perturbations):** The Nasr et al. (USENIX Security 2021) method — pre-computes universal adversarial perturbation patterns offline (white-box), then deploys them "blind" on live traffic in real-time without per-flow re-optimization. Used as a baseline in the PANTS comparison.
 
 #### 9.2.4 Traffic Morphing and Shaping Attacks
 
@@ -396,7 +396,8 @@ The combined paper set (Sections 9 + 10) covers adversarial robustness across a 
 | **Service-type classification** (chat, VoIP, streaming, browsing) | 6–12 classes | [B1], [B8], [M6], [M7] |
 | **Website fingerprinting** (closed-world) | 25–1,000+ sites | [B2], [C1], [E1], [E4], [E8], [E11], [M1], [M2] |
 | **Multi-tab website identification** | N websites from mixed traces | [M3] |
-| **Malware family classification** | 10–48 types | [B5], [D1], [D2], [M8] |
+| **Malware family classification** | 10–48 types | [D1], [D2], [M8] |
+| **Attack-type detection** (DDoS, brute-force, botnet, etc.) | 8+ types | [B5] |
 | **Operating system / browser identification** | Multiple OS × browser | IEEE DataPort dataset |
 | **Certified robustness for multi-class traffic** | 100+ classes | [C1] CertTA, [M1] BARS |
 
@@ -543,7 +544,7 @@ This is the first adversarial attack study specifically targeting pre-trained tr
 
 **Citation:** Yam Sharon, David Berend, Yang Liu, Asaf Shabtai, and Yuval Elovici. "TANTRA: Timing-Based Adversarial Network Traffic Reshaping Attack." *IEEE TDSC*, vol. 19, no. 6, pp. 3723–3738, 2022. DOI: 10.1109/TDSC.2022.3199100.
 
-**(1) Multi-class scenario.** Evaluated on **multi-class intrusion detection**: 8 attack types (Botnet, DDoS, DoS GoldenEye, DoS Hulk, DoS Slowhttptest, DoS Slowloris, FTP-Patator, SSH-Patator) plus benign traffic. The classifier must correctly assign each flow to one of these categories. Datasets: **CIC-IDS-2017** and **CSE-CIC-IDS-2018**.
+**(1) Multi-class scenario.** Evaluated on **multi-class intrusion detection**: 8 attack types (Botnet, DDoS, DoS GoldenEye, DoS Hulk, DoS Slowhttptest, DoS Slowloris, FTP-Patator, SSH-Patator) plus benign traffic. The classifier must correctly assign each flow to one of these categories. Datasets: **CIC-IDS-2017** and **CSE-CIC-IDS-2018**. *Note:* These are general NIDS datasets containing a mix of encrypted and unencrypted traffic, not exclusively encrypted traffic. TANTRA's timing manipulation technique is encryption-agnostic — it applies equally regardless of whether payload content is encrypted.
 
 **(2) Threat model & target architectures.**
 - **Threat model:** **Black-box.** The attacker has no access to the NIDS model internals. The LSTM is trained independently on benign traffic from the target network — no knowledge of the classifier is needed.
@@ -947,7 +948,7 @@ In *Proceedings of the 21st European Symposium on Research in Computer Security 
 - **Venue:** ESORICS (top European security conference).
 - **Contribution:** Adaptive padding defense for Tor. Reduced state-of-the-art WF attack accuracy from **91% to 20%** in closed-world and **1% precision** in open-world, with **zero latency overhead** and **<80% bandwidth overhead**.
 
-**[E6]** Tao Wang.
+**[E6]** Tao Wang and Ian Goldberg.
 "Walkie-Talkie: An Efficient Defense Against Passive Website Fingerprinting Attacks."
 In *Proceedings of the 26th USENIX Security Symposium (USENIX Security 2017)*, Vancouver, BC, Canada, August 16–18, 2017, pp. 1375–1390. ISBN: 978-1-931971-40-9.
 - **Venue:** USENIX Security (top-4 security conference).

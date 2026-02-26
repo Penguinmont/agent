@@ -1,0 +1,659 @@
+\documentclass[12pt,a4paper]{article}
+
+% Packages
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{parskip}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{caption}
+\usepackage{float}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+
+% Hyperref setup
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!60!black,
+    citecolor=green!50!black,
+    urlcolor=blue!70!black,
+    pdftitle={Encrypted Traffic Classification Methods},
+    pdfauthor={},
+}
+
+% Header/footer
+\pagestyle{fancy}
+\fancyhf{}
+\cfoot{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% Section formatting
+\titleformat{\section}{\large\bfseries}{}{0em}{\thesection.\quad}
+\titleformat{\subsection}{\normalsize\bfseries}{}{0em}{\thesubsection\quad}
+\titleformat{\subsubsection}{\normalsize\itshape\bfseries}{}{0em}{\thesubsubsection\quad}
+
+% Table column types
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+
+\begin{document}
+
+%----------------------------------------------------------------------
+% Title
+
+%----------------------------------------------------------------------
+
+\begin{center}
+  {\LARGE\bfseries Encrypted Traffic Classification and Adversarial Attacks Methods}\\[0.8em]
+  %{\large Survey of Specific Methods Currently Used for Classifying Encrypted Network Traffic, Including Methods for Assessing the Robustness of These Systems Against Adversarial Attacks}\\[1.2em]
+
+\end{center}
+
+\vspace{1em}
+\hrule
+\vspace{1.5em}
+
+%----------------------------------------------------------------------
+% Background
+\section{Background}
+As encryption protocols such as TLS 1.3, QUIC, and VPNs become ubiquitous, traditional traffic classification techniques, port-based identification and deep packet inspection (DPI)have become ineffective. Below is a overview of specific methods currently used for classifying encrypted network traffic, including approaches for evaluating the robustness of these systems against malicious attacks.
+%----------------------------------------------------------------------
+
+%----------------------------------------------------------------------
+\section{Non-ML Heuristic and Metadata-Based Methods}
+
+These methods do not rely on machine learning models and instead exploit
+protocol metadata or deterministic rules.
+
+\subsection{Port-Based Classification (Legacy)}
+
+Maps well-known port numbers (  443 for HTTPS, 853 for DNS-over-TLS) to
+application protocols.
+
+\textbf{Limitation:} Modern applications use dynamic ports, port multiplexing,
+and tunneling, making this approach unreliable. It is considered the
+``first generation'' of traffic classification and is largely obsolete as a
+standalone method.
+
+\subsection{Server Name Indication (SNI) Inspection}
+
+During the TLS handshake (ClientHello), the client transmits the target
+hostname in plaintext via the SNI field. Classifiers match the SNI value
+against known domain-to-application mappings.
+
+\textbf{Limitation:} TLS~1.3 with Encrypted Client Hello~(ECH) encrypts the
+SNI field, rendering this method ineffective. Even without ECH, CDNs and shared
+hosting cause many applications to share SNI values.
+
+\subsection{Fingerprinting Methods (JA3, JA4, JARM)}
+
+\begin{itemize}
+  \item \textbf{JA3 / JA3S:} Creates an MD5 hash fingerprint from TLS
+    ClientHello parameters (cipher suites, extensions, elliptic curves) and
+    ServerHello responses. Widely used for identifying client applications and
+    malware.
+  \item \textbf{JA4+:} An evolution of JA3 with improved fingerprint
+    granularity covering TLS, HTTP, TCP, and other layers.
+  \item \textbf{JARM:} Active fingerprinting of TLS servers by sending crafted
+    ClientHello messages and hashing the ServerHello responses.
+\end{itemize}
+
+\textbf{Limitation:} Fingerprint databases must be continuously maintained.
+TLS library updates and randomization features in modern browsers reduce
+fingerprint stability.
+
+\subsection{DNS-Based Association}
+
+Correlates DNS queries preceding a TLS connection with the resulting encrypted
+flow to infer the application.
+
+\textbf{Limitation:} DNS-over-HTTPS~(DoH) and DNS-over-TLS~(DoT) encrypt DNS
+traffic, and cached DNS responses may not produce observable queries.
+
+%----------------------------------------------------------------------
+\section{Classical Machine Learning Methods}
+
+These approaches extract hand-crafted statistical features from encrypted flows
+and feed them into traditional ML classifiers.
+
+\subsection{Feature Categories}
+
+\begin{table}[H]
+  \centering
+  \caption{Feature types used in classical ML encrypted traffic classification.}
+  \label{tab:features}
+  \begin{tabularx}{\textwidth}{L{3.8cm}X}
+    \toprule
+    \textbf{Feature Type} & \textbf{Examples} \\
+    \midrule
+    Flow-level statistics &
+      Total bytes, duration, mean/variance of inter-arrival times, number of
+      packets per flow \\
+    Packet-level statistics &
+      Packet size distribution, payload length histogram, direction sequences \\
+    Burst-level features &
+      Burst size, burst duration, number of bursts per flow \\
+    TLS handshake metadata &
+      Cipher suites offered, extensions, certificate chain length, handshake
+      message sizes \\
+    Time-series features &
+      Autocorrelation, spectral density of packet timing \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{Specific Classifiers in Use}
+
+\begin{itemize}
+  \item \textbf{Random Forest~(RF):} The most widely adopted classical ML
+    method for encrypted traffic classification. Ensembles of decision trees
+    offer robustness, interpretability, and strong performance with statistical
+    flow features. Frequently used as a baseline.
+  \item \textbf{Gradient Boosted Trees (XGBoost, LightGBM, CatBoost):} Boosted
+    tree ensembles that often outperform RF, especially on imbalanced datasets.
+  \item \textbf{$k$-Nearest Neighbours ($k$-NN):} Simple instance-based
+    classifier; effective when feature spaces are low-dimensional but does not
+    scale well.
+  \item \textbf{Support Vector Machines~(SVM):} Effective in
+    higher-dimensional feature spaces with kernel tricks (RBF, polynomial).
+    Used in earlier encrypted traffic studies.
+  \item \textbf{Naive Bayes:} Fast probabilistic classifier; serves as a
+    lightweight baseline in many comparative studies.
+  \item \textbf{Hidden Markov Models~(HMM):} Used to model temporal sequences
+    of packet sizes or directions as state transitions, capturing traffic
+    dynamics.
+\end{itemize}
+
+\subsection{Feature Selection and Reduction}
+
+Principal Component Analysis~(PCA) and Linear Discriminant Analysis~(LDA) are
+applied to reduce high-dimensional feature sets. Information Gain,
+Chi-squared tests, and Mutual Information are used for feature ranking and
+selection.
+
+%----------------------------------------------------------------------
+\section{Deep Learning Methods}
+
+Deep learning methods can automatically learn representations from raw traffic
+data, reducing the need for manual feature engineering.
+
+\subsection{Convolutional Neural Networks (CNN)}
+
+\begin{itemize}
+  \item \textbf{1D-CNN on raw bytes:} Treats the first $N$ bytes of a flow's
+    payload as a 1D signal and applies convolutional filters to learn local byte
+    patterns. This is one of the most common approaches.
+  \item \textbf{2D-CNN on traffic images:} Reshapes raw packet bytes into 2D
+    grayscale images (  $28\times28$ pixel grids) and applies image
+    classification architectures. Notable works convert flows into ``traffic
+    images.''
+  \item \textbf{NetConv (2025):} A pre-trained convolutional model using
+    stacked traffic convolution layers with window-wise byte scoring and
+    sequence-wise byte gating. Demonstrated a 6.88\% improvement over
+    transformer models and $7.41\times$ higher throughput with linear
+    complexity.
+\end{itemize}
+
+CNNs are frequently reported as the strongest single-model performer, with
+studies showing up to 99.34\% accuracy on HTTPS traffic classification
+benchmarks.
+
+\subsection{Recurrent Neural Networks (RNN)}
+
+\begin{itemize}
+  \item \textbf{LSTM (Long Short-Term Memory):} Models the sequential nature
+    of packet arrivals, capturing long-range temporal dependencies in traffic
+    flows. Applied to both packet-level features and raw byte sequences.
+  \item \textbf{GRU (Gated Recurrent Unit):} A lighter variant of LSTM;
+    often achieves comparable accuracy with lower computational cost.
+  \item \textbf{Bidirectional RNNs:} Process packet sequences in both forward
+    and backward directions for richer temporal context.
+\end{itemize}
+
+\subsection{Transformer-Based Models}
+
+\begin{itemize}
+  \item \textbf{TransECA-Net (2025):} A transformer architecture specifically
+    designed for encrypted traffic classification, using self-attention over
+    byte sequences.
+  \item \textbf{ET-BERT:} A pre-trained transformer model that learns
+    contextual representations of encrypted traffic bytes, then fine-tunes for
+    downstream classification tasks.
+\end{itemize}
+
+\textbf{Limitation:} Quadratic complexity in self-attention limits scalability
+to long byte sequences; positional encodings may not generalise beyond training
+sequence lengths.
+
+\subsection{Autoencoders and Generative Models}
+
+\begin{itemize}
+  \item \textbf{Variational Autoencoders~(VAE):} Used for unsupervised or
+    semi-supervised feature learning from unlabelled encrypted traffic.
+  \item \textbf{Generative Adversarial Networks~(GANs):} Applied for data
+    augmentation --- generating synthetic traffic samples to address class
+    imbalance --- and for anomaly detection in encrypted flows.
+\end{itemize}
+
+\subsection{Graph Neural Networks (GNN)}
+
+\begin{itemize}
+  \item \textbf{Traffic Interaction Graphs:} Model hosts and flows as nodes
+    and edges in a communication graph. GNNs learn structural patterns that
+    individual flow analysis cannot capture.
+  \item \textbf{S2-ETR (2024):} Integrates semantic feature extraction with
+    communication topology via a Hyper-Bipartite Graph framework,
+    outperforming 15 baselines by 2.4\%--17.1\%.
+  \item \textbf{AppNet and FlowPrint:} Build device-level or app-level traffic
+    graphs and use graph-based clustering or classification for application
+    identification.
+\end{itemize}
+
+%----------------------------------------------------------------------
+\section{Hybrid and Ensemble Methods}
+
+\subsection{Stacked Deep Ensembles}
+
+Combine multiple DL architectures (  CNN + LSTM + GRU) in a stacked
+ensemble. A 2025 study in \textit{Scientific Reports} demonstrated that stacked
+deep ensembles improve robustness over single-model classifiers for HTTPS
+traffic~\cite{elshewey2025}.
+
+\subsection{Multi-Stage / Cascaded Classifiers}
+
+Use a lightweight first-stage classifier (  SNI or fingerprint matching)
+and fall back to an ML/DL model only for unresolved flows, balancing accuracy
+with computational efficiency. The \textbf{DPC} (Determine whether Plaintext
+is enough to be Classified) selector optimises whether to classify using
+plaintext metadata alone or to invoke a heavier encrypted-content model.
+
+\subsection{Multi-Modal Fusion}
+
+Combine heterogeneous feature types (flow statistics + raw bytes + graph
+structure) using attention-based fusion layers, with joint training on
+packet-level and flow-level representations.
+
+
+
+%----------------------------------------------------------------------
+\subsection{Specific Application Domains}
+
+\begin{table}[H]
+  \centering
+  \caption{Typical methods by application domain.}
+  \label{tab:domains}
+  \begin{tabularx}{\textwidth}{L{4.5cm}X}
+    \toprule
+    \textbf{Task} & \textbf{Typical Methods} \\
+    \midrule
+    Application identification (  YouTube vs.\ Netflix) &
+      CNN on raw bytes, Random Forest on flow statistics, GNN on traffic graphs \\
+    Malware / intrusion detection &
+      LSTM on packet sequences, autoencoders for anomaly detection,
+      JA3 fingerprinting \\
+    Website fingerprinting (over Tor/VPN) &
+      Deep fingerprinting with CNN, $k$-NN with cumulative features,
+      triplet networks \\
+    VPN vs.\ non-VPN detection &
+      Gradient boosted trees on statistical features, 1D-CNN on packet sizes \\
+    QoS-aware classification (video, VoIP, browsing) &
+      Multi-task learning with shared DL backbones, HMMs \\
+    IoT device identification &
+      Random Forest on flow metadata, GNN on device communication graphs \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+%----------------------------------------------------------------------
+\subsection{Publicly Available Benchmark Datasets}
+
+\begin{table}[h!]
+  \centering
+  \caption{Publicly available benchmark datasets for encrypted traffic
+    classification.}
+  \label{tab:datasets}
+  \begin{tabularx}{\textwidth}{L{5cm}X}
+    \toprule
+    \textbf{Dataset} & \textbf{Description} \\
+    \midrule
+    ISCX VPN-nonVPN (2016) &
+      Labelled VPN and non-VPN traffic for application classification \\
+    ISCX Tor-nonTor (2016) &
+      Tor and non-Tor encrypted traffic \\
+    USTC-TFC2016 &
+      20 classes of malware and benign encrypted traffic \\
+    CIRA-CIC-DoHBrw-2020 &
+      DNS-over-HTTPS traffic dataset \\
+    CESNET-TLS22 / CESNET-QUIC22 &
+      Large-scale TLS and QUIC datasets from a national research network \\
+    Cross-Platform (2025) &
+      Annotated TLS communications for popular desktop and mobile applications \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+%----------------------------------------------------------------------
+\section{Adversarial Robustness Assessment Methods}
+
+Unlike image or text domains, network traffic imposes hard protocol and
+semantic constraints on what an adversary can change, making this a distinct
+subfield. The methods below cover both the attack techniques used to probe
+classifiers and the defence/certification frameworks used to harden them.
+
+\subsection{Threat Models and Adversary Capabilities}
+
+Robustness assessments operate under clearly defined threat models
+that specify what the adversary can observe and modify.
+
+\begin{table}[H]
+  \centering
+  \caption{Adversary threat models used in encrypted traffic robustness
+    research.}
+  \label{tab:threat}
+  \begin{tabularx}{\textwidth}{L{3.2cm}L{4.5cm}X}
+    \toprule
+    \textbf{Threat Model} & \textbf{Adversary Knowledge} &
+      \textbf{Typical Use} \\
+    \midrule
+    White-box &
+      Full access to model architecture, weights, and gradients &
+      Upper-bound robustness evaluation; gradient-based attacks \\
+    Black-box (query-based) &
+      Can query the model and observe outputs only &
+      Realistic deployment scenarios; transferability studies \\
+    Black-box (transfer-based) &
+      No query access; uses a surrogate model &
+      Worst-case practical attack; tests cross-model generalisation \\
+    Gray-box &
+      Partial knowledge (  feature set but not weights) &
+      Intermediate realism between white-box and black-box \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+A critical distinction from other adversarial ML domains is the
+\textbf{network-semantic constraint}: perturbations must produce valid traffic
+(correct checksums, valid protocol state machines, preserving
+application-layer functionality). This rules out arbitrary $L_p$-bounded
+perturbations common in image adversarial ML.
+
+\subsection{Adversarial Attack Methods Used for Robustness Probing}
+
+These are specific attack techniques researchers apply to encrypted traffic
+classifiers to measure their vulnerability.
+
+\subsubsection{Gradient-Based Attacks (White-Box)}
+
+\begin{itemize}
+  \item \textbf{FGSM (Fast Gradient Sign Method):} Single-step perturbation
+    along the gradient direction. Adapted for traffic by constraining
+    perturbations to valid packet modifications (  appending padding bytes
+    rather than changing encrypted payload content).
+  \item \textbf{PGD (Projected Gradient Descent):} Iterative version of FGSM
+    with projection back onto the feasible perturbation set after each step.
+    The standard benchmark for white-box robustness in both image and traffic
+    domains.
+  \item \textbf{C\&W (Carlini \& Wagner) Attack:} Optimisation-based attack
+    that minimises perturbation magnitude while achieving misclassification.
+    Used to establish lower bounds on classifier robustness.
+  \item \textbf{AdvTraffic (2022):} A traffic-specific adversarial framework
+    that applies gradient-based perturbations to encrypted flow features while
+    respecting protocol constraints. Demonstrated effective evasion of CNN- and
+    LSTM-based classifiers.
+\end{itemize}
+
+\subsubsection{Universal Adversarial Perturbations (UAP)}
+
+A single perturbation pattern is crafted that, when applied to any input,
+degrades classifier performance across all classes. Three domain-specific
+variants have been proposed~\cite{sadeghzadeh2021}:
+
+\begin{itemize}
+  \item \textbf{AdvPad:} Injects a universal adversarial perturbation into
+    packet content/padding fields to attack packet-level classifiers.
+  \item \textbf{AdvPay:} Injects UAPs into dummy packet payloads to target
+    flow-content classifiers that analyse sequences of packet payloads.
+  \item \textbf{AdvBurst:} Injects crafted dummy packets with adversarial
+    statistical properties into flow bursts to fool time-series-based
+    classifiers.
+\end{itemize}
+
+These three variants collectively test robustness across different feature
+abstraction levels (packet, payload, flow).
+
+\subsubsection{Practical Constraint-Aware Attacks}
+
+\begin{itemize}
+  \item \textbf{PANTS (Practical Adversarial Network Traffic Samples,
+    2025)~\cite{pants2025}:} A white-box framework that combines adversarial ML
+    with Satisfiability Modulo Theories~(SMT) solvers to generate adversarial
+    traffic samples that satisfy all network-semantic constraints (valid
+    headers, correct protocol state, functional application behaviour). PANTS
+    achieves a 70\% higher median success rate than prior baselines (Amoeba,
+    BAP) in finding adversarial inputs. It addresses non-differentiable
+    components in traffic processing pipelines that prevent naive gradient-based
+    attacks.
+  \item \textbf{Amoeba (CoNEXT 2023):} A reinforcement-learning-based approach
+    that learns to craft adversarial packet sequences against ML-based
+    censorship classifiers through a black-box trial-and-error process,
+    achieving 94\% average attack success rate with transferability to unseen
+    models.
+  \item \textbf{BAP (Blind Adversarial Perturbations)~\cite{nasr2021}:} The
+    Nasr et al.\ (USENIX Security 2021) method --- pre-computes universal
+    adversarial perturbation patterns offline (white-box), then deploys them
+    ``blind'' on live traffic in real-time without per-flow re-optimisation.
+    Used as a baseline in the PANTS comparison.
+\end{itemize}
+
+
+%----------------------------------------------------------------------
+\section{Selected Recent Papers}
+
+
+\subsection{PANTS --- Jin \& Apostolaki (2025)}
+
+Jin and Apostolaki~\cite{pants2025} present PANTS, a white-box framework
+evaluated on three tasks: binary VPN detection (ISCXVPN2016, 8,577 flows),
+18-class mobile application identification (UTMobileNetTraffic2021, 7,134
+flows), and 11-class QoE video resolution inference (VCAML, 37,274 samples).
+The adversary can delay packets, inject dummy packets, and append dummy
+payloads. PANTS targets four classifier architectures (MLP, RF, Transformer,
+CNN) and achieves a 70\% higher median success rate than prior baselines by
+combining PGD with a Z3 SMT solver to handle non-differentiable
+traffic-engineering pipeline components.
+
+\subsection{TANTRA --- Sharon et al.\ (IEEE TDSC, 2022)}
+
+Sharon et al.~\cite{sharon2022} propose TANTRA, a black-box timing-based
+adversarial attack that manipulates only inter-packet timing. An LSTM is
+trained solely on benign traffic from the target network --- no knowledge of
+the NIDS is required. TANTRA is evaluated on multi-class intrusion detection
+(8 attack types + benign) using CIC-IDS-2017 and CSE-CIC-IDS-2018.
+
+%----------------------------------------------------------------------
+\section{Summary Table of Adversarial Attack Methods}
+
+\begin{table}[H]
+  \centering
+  \caption{Comparison of adversarial attack methods for encrypted traffic
+    classifiers.}
+  \label{tab:attacks}
+  \renewcommand{\arraystretch}{1.3}
+  \begin{tabularx}{\textwidth}{L{2.6cm}C{1.5cm}L{2.5cm}L{2.8cm}X}
+    \toprule
+    \textbf{Paper} & \textbf{Threat Model} &
+      \textbf{Target Architectures} & \textbf{Features Exploited} &
+      \textbf{Optimisation Method} \\
+    \midrule
+    Sadeghzadeh et al.~\cite{sadeghzadeh2021} &
+      White-box &
+      1D-CNN, 2D-CNN (FlowPic), LSTM &
+      Raw bytes, payload, burst statistics &
+      UAP via iterative DeepFool + $L_p$ projection \\
+    Nasr et al.~\cite{nasr2021} &
+      White-box $\rightarrow$ blind &
+      DF (CNN), Var-CNN, DeepCorr &
+      Packet direction, size, IAT, bursts &
+      Gradient-based (Adam) + feature remapping \\
+    PANTS~\cite{pants2025} &
+      White-box &
+      MLP, RF, Transformer, CNN &
+      Flow stats (pkt size, IAT, duration) &
+      PGD + Z3 SMT solver \\
+    Adv.\ Pre-Padding~\cite{jing2025} &
+      White- \& black-box &
+      ET-BERT, YaTC, NetMamba, 1D-CNN &
+      Raw byte sequences &
+      Deep RL (policy gradient, MDP) \\
+    TANTRA~\cite{sharon2022} &
+      Black-box &
+      Kitsune, LUCID, custom DNN &
+      Inter-packet timing only &
+      Supervised LSTM (MSE on benign IPT) \\
+    Chehade et al.~\cite{chehade2025} &
+      White-box &
+      1D-CNN (HW-NAS) &
+      Raw bytes or packet-stat time series &
+      FGSM / PGD ($L_\infty$) + adversarial fine-tuning \\
+    BARS~\cite{bars2023} &
+      Certification &
+      ACID, CADE, Kitsune &
+      Any (heterogeneous) &
+      Boundary-adaptive randomised smoothing \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+%----------------------------------------------------------------------
+\section{Selected Papers on Defences and Robustness}
+
+% ------------------------------------------------------------------
+\subsection{Evasion Attacks Against Traffic Classifiers}
+
+\paragraph{BLANKET~\cite{nasr2021}}
+BLANKET is a real-time adversarial evasion framework that fools DNN-based Tor
+traffic analysers by injecting carefully crafted perturbations directly into
+live network flows. Rather than relying on gradient back-propagation alone, it
+employs a Generative Adversarial Network~(GAN) to learn the joint distribution
+of packet sizes, inter-arrival timings, and direction sequences, enabling it to
+synthesise perturbations that are statistically indistinguishable from
+legitimate Tor patterns. A dedicated feature-extraction function bridges the
+gap between the GAN's output space and the constraints of an actual network
+stream, remapping generated noise onto feasible packet-level modifications at
+transmission time.
+
+BLANKET adopts an \textbf{encoder--decoder} architecture: the perturbation
+policy must be shared between the sender (encoder) and the receiver (decoder)
+so that each side can apply the complementary transformation needed to
+reconstruct the original payload while keeping observable traffic statistics
+adversarial. This shared-secret design ensures that all injected modifications
+remain within the bounds imposed by TCP/IP protocol semantics and Tor relay
+behaviour, making the resulting flows both \emph{functional} (data is
+delivered correctly) and \emph{evasive} (the DNN classifier is misled). In
+empirical evaluations, BLANKET achieves high attack success rates against
+contemporary deep-learning Tor traffic analysers while incurring only modest
+bandwidth overhead.
+
+\paragraph{Manipulator~\cite{han2021manipulator}}
+Manipulator is a black-box adversarial robustness evaluation tool designed
+specifically to stress-test ML-based network intrusion detection systems
+(NIDSs) by executing evasion attacks directly in the \emph{real} traffic
+space rather than in a surrogate feature space. Concretely, Manipulator
+perturbs three observable flow properties --- \textbf{inter-packet gaps},
+\textbf{protocol layer fields}, and \textbf{packet sizes} --- in a coordinated
+manner so that malicious traffic is rendered statistically similar to benign
+background traffic, thereby causing binary-classification NIDSs to
+misclassify it as legitimate.
+
+Because Manipulator operates as a pure black-box attacker, it does not require
+any knowledge of the target NIDS's architecture, weights, or training data,
+making it applicable to commercial or opaque deployments. Importantly,
+Manipulator does \emph{not} rely on an encoder--decoder framework: its
+perturbations are one-sided modifications applied by the attacker without any
+cooperative action from the receiver. A key practical limitation is that
+Manipulator supports only \textbf{offline attack mode} --- perturbations are
+pre-computed on captured traffic traces and cannot be applied dynamically in
+real time as packets traverse the network, which restricts its applicability
+to post-hoc robustness audits rather than live adversarial deployments.
+
+% ------------------------------------------------------------------
+
+\paragraph{WTF-PAD~\cite{wtfpad2016}}
+WTF-PAD (Website Traffic Fingerprinting -- Padding) is a traffic-obfuscation
+tool designed for the Tor network. It inserts \emph{dummy} (cover) packets
+into real Tor flows under the control of a finite-state machine, thereby
+distorting the size and timing distributions that website fingerprinting (WF)
+classifiers rely upon. The defence is \textbf{untargeted}: rather than
+morphing traffic towards a specific target class, it broadly disrupts the
+per-site statistical signatures that distinguish one website's loading pattern
+from another.
+
+
+
+
+
+
+
+%----------------------------------------------------------------------
+\section{Multi-Class Evaluation Benchmarks}
+These methods modify observable traffic characteristics (without touching
+encrypted content) to make one traffic class resemble another.
+\begin{table}[H]
+  \centering
+  \caption{Multi-class evaluation scenarios in selected adversarial
+    robustness papers.}
+  \label{tab:benchmarks}
+  \renewcommand{\arraystretch}{1.25}
+  \begin{tabularx}{\textwidth}{L{2.8cm}L{3.8cm}C{1.6cm}X}
+    \toprule
+    \textbf{Paper} & \textbf{Multi-Class Task} & \textbf{Classes} &
+      \textbf{Dataset(s)} \\
+    \midrule
+    Sadeghzadeh et al.~\cite{sadeghzadeh2021} &
+      Application-type classification &
+      12 &
+      ISCX-VPN-nonVPN 2016, USTC-TFC2016 \\
+    Nasr et al.~\cite{nasr2021} &
+      Website fingerprinting (closed-world) &
+      95+ &
+      Custom Tor WF dataset \\
+    PANTS~\cite{pants2025} &
+      App identification + VPN detection + QoE inference &
+      18 app / 11 resolution / binary VPN &
+      UTMobileNetTraffic2021, VCAML, ISCXVPN2016 \\
+    TANTRA~\cite{sharon2022} &
+      Multi-class attack-type identification &
+      8 attack types + benign &
+      CIC-IDS-2017, CSE-CIC-IDS-2018 \\
+    Chehade et al.~\cite{chehade2025} &
+      Multi-class application classification &
+      Multiple VPN app categories &
+      ISCX-VPN-nonVPN 2016 \\
+    CertTA~\cite{certTA2025} &
+      Website fingerprinting + app classification &
+      95--100 sites / app categories &
+      Tor WF datasets, encrypted app traffic \\
+    HyperVision~\cite{hypervision2023} &
+      Multi-class malicious traffic identification &
+      48+ attack types &
+      92 datasets \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+
+%----------------------------------------------------------------------
+% Bibliography
+%----------------------------------------------------------------------
+\bibliographystyle{unsrt}
+\bibliography{references}
+
+\end{document}
